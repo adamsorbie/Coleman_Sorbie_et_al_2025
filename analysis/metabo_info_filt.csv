@@ -1,0 +1,86 @@
+,Metabolite name,Ontology,Ontology2
+neg_1272,ST 24:1;O5;S,BASulfate,Bile acid derivative
+pos_1514,w/o MS2:ST 24:1;O4/14:1,DCAE,Bile acid derivative
+pos_1455,w/o MS2:DG O-8:0_24:5,EtherDG,Other
+pos_450,IV/VI/LV/VL,Amino acid,Dipeptide
+pos_451,IV/VI/LV/VL,Amino acid,Dipeptide
+pos_455,IT/TI/LT/TL,Amino acid,Dipeptide
+pos_456,IT/TI/LT/TL,Amino acid,Dipeptide
+pos_457,IT/TI/LT/TL,Amino acid,Dipeptide
+pos_494,IL/LI,Amino acid,Dipeptide
+pos_495,IL/LI,Amino acid,Dipeptide
+pos_555,EL/LE/IL/LI,Amino acid,Dipeptide
+pos_626,IF/FI/LF/FL,Amino acid,Dipeptide
+neg_312,FA 18:0,FA,Fatty acid
+neg_477,FA 22:4,FA,Fatty acid
+neg_474,FA 22:5,FA,Fatty acid
+neg_553,FA 24:6,FA,Fatty acid
+neg_941,FA 30:8,FA,Fatty acid
+neg_1743,FA 38:4,FA,Fatty acid
+pos_949,C20 hydroxy fatty acid,FA,Fatty acid
+pos_702,w/o MS2:NAE 16:1,NAE,Fatty acid amide
+neg_1698,w/o MS2:NAGly 14:0/17:0,NAGly,Fatty acid amide
+pos_1115,Dioctyl phthalate,Others,Fatty ester
+neg_762,w/o MS2:FAHFA 22:6/3:0,FAHFA,Fatty ester
+pos_913,w/o MS2:CAR 13:1,CAR,Fatty ester
+neg_290,Naringenin,Others,Other
+neg_2350,w/o MS2:SMGDG O-22:6_4:0,EtherSMGDG,Other
+pos_552,w/o MS2:myo-Inositol-1-phosphate,Others,Other
+neg_1777,LPC 18:2,LPC,Lysophospholipid
+neg_1778,LPC 18:2,LPC,Lysophospholipid
+pos_1330,LPC O-16:0,EtherLPC,Lysophospholipid
+pos_1375,LPC O-18:1,EtherLPC,Lysophospholipid
+neg_956,LPE O-16:0,EtherLPE,Lysophospholipid
+pos_1206,LPE O-16:1,EtherLPE,Lysophospholipid
+neg_1135,LPE O-18:0,EtherLPE,Lysophospholipid
+neg_418,LPG 4:0,LPG,Lysophospholipid
+neg_1139,w/o MS2:LPG 15:1,LPG,Lysophospholipid
+neg_1405,w/o MS2:LPS 17:1,LPS,Lysophospholipid
+pos_1378,w/o MS2:LPC O-18:0,EtherLPC,Lysophospholipid
+neg_1725,w/o MS2:LPC O-18:0,EtherLPC,Lysophospholipid
+neg_1694,w/o MS2:LPC O-18:1,EtherLPC,Lysophospholipid
+pos_1371,w/o MS2:LPC O-18:3,EtherLPC,Lysophospholipid
+neg_848,w/o MS2:LPC O-8:0,EtherLPC,Lysophospholipid
+neg_1306,w/o MS2:LPE O-20:1,EtherLPE,Lysophospholipid
+neg_1161,w/o MS2:LPG O-16:0,EtherLPG,Lysophospholipid
+neg_1104,w/o MS2:LPG O-16:3,EtherLPG,Lysophospholipid
+pos_597,w/o MS2:Michler`s ketone,Others,Other
+neg_1257,w/o MS2:PA 3:0_18:4,PA,Phospholipid
+neg_2145,w/o MS2:PG 2:0_24:4,PG,Phospholipid
+neg_2210,w/o MS2:PG 3:0_24:2,PG,Phospholipid
+neg_2154,w/o MS2:PG 4:0_22:3,PG,Phospholipid
+neg_2116,w/o MS2:PG O-16:1_10:0,EtherPG,Phospholipid
+neg_1983,w/o MS2:PS 2:0_20:0,PS,Phospholipid
+neg_1837,w/o MS2:PS 3:0_18:4,PS,Phospholipid
+pos_1286,w/o MS2:SL 10:0;O/13:0;O,SL,Sphingolipid
+neg_1536,w/o MS2:SL 10:1;O/19:2,SL,Sphingolipid
+neg_1563,w/o MS2:SL 12:2;O/18:5,SL,Sphingolipid
+neg_1692,w/o MS2:SL 14:3;O/16:2;O,SL,Sphingolipid
+neg_1117,w/o MS2:SM 12:2;2O/2:0,SM,Sphingolipid
+pos_1544,w/o MS2:CE 17:1,CE,Other
+pos_1501,w/o MS2:TG 8:0_8:0_16:0,TG,Other
+neg_1386,RIKEN N-VS1 ID-2229 from Mouse_BAT_fads2KO_N_Ctr,Unknown,Unknown
+neg_1445,RIKEN N-VS1 ID-2317 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_1551,RIKEN N-VS1 ID-2443 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_1650,RIKEN N-VS1 ID-2589 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_1668,RIKEN N-VS1 ID-2617 from Mouse_Feces_WT_ABX_Ctr,Unknown,Unknown
+neg_2288,RIKEN N-VS1 ID-3970 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_356,RIKEN N-VS1 ID-790 from Mouse_Macrophage_WT_N_F1AA,Unknown,Unknown
+pos_1521,RIKEN P-VS1 ID-6421 from Mouse_Feces_WT_ABX_Ctr,Unknown,Unknown
+neg_582,w/o MS2:RIKEN N-VS1 ID-1155 from Mouse_AdrenalGlands_fads2KO_N_Ctr,Unknown,Unknown
+neg_593,w/o MS2:RIKEN N-VS1 ID-1169 from Mouse_AdrenalGlands_WT_N_Ctr,Unknown,Unknown
+neg_634,w/o MS2:RIKEN N-VS1 ID-1234 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_646,w/o MS2:RIKEN N-VS1 ID-1242 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_647,w/o MS2:RIKEN N-VS1 ID-1242 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_764,w/o MS2:RIKEN N-VS1 ID-1465 from Blank,Unknown,Unknown
+neg_987,w/o MS2:RIKEN N-VS1 ID-1766 from Mouse_SmallIntestine_WT_N_F1,Unknown,Unknown
+neg_1411,w/o MS2:RIKEN N-VS1 ID-2278 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+neg_1434,w/o MS2:RIKEN N-VS1 ID-2307 from Mouse_SmallIntestine_WT_N_F1AA,Unknown,Unknown
+neg_1477,w/o MS2:RIKEN N-VS1 ID-2374 from Blank,Unknown,Unknown
+neg_2000,w/o MS2:RIKEN N-VS1 ID-3080 from Mouse_Ear_fads2KO_N_Ctr,Unknown,Unknown
+neg_2021,w/o MS2:RIKEN N-VS1 ID-3111 from Mouse_AdrenalGlands_fads2KO_N_Ctr,Unknown,Unknown
+pos_817,w/o MS2:RIKEN P-VS1 ID-1554 from Cell_HEK293_WT_N_Ctr,Unknown,Unknown
+pos_1185,w/o MS2:RIKEN P-VS1 ID-3047 from Cell_C2C12_WT_N_4h50AA,Unknown,Unknown
+pos_1269,w/o MS2:RIKEN P-VS1 ID-3617 from Mouse_Macrophage_WT_N_F1AA,Unknown,Unknown
+pos_1472,w/o MS2:RIKEN P-VS1 ID-5407 from Mouse_Feces_WT_N_Ctr,Unknown,Unknown
+pos_560,w/o MS2:RIKEN P-VS1 ID-767 from Mouse_Muscle_WT_CTX14_Ctr,Unknown,Unknown

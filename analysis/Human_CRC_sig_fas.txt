@@ -1,0 +1,42 @@
+Metabolite
+C10 hydroxy fatty acid
+C12 hydroxy fatty acid
+C13 hydroxy fatty acid
+C14 hydroxy fatty acid
+C14:1 hydroxy fatty acid
+C16 hydroxy fatty acid
+C20 hydroxy fatty acid
+C20:2 hydroxy fatty acid
+C20:4 hydroxy fatty acid
+C22:6 hydroxy fatty acid
+C5 hydroxy fatty acid
+C6 hydroxy fatty acid
+C9 hydroxy fatty acid
+FA 9:0
+FA 10:0
+FA 16:1
+FA 20:2
+FA 22:2
+FA 14:0
+FA 18:0
+FA 16:0
+FA 12:0
+FA 20:1
+FA 14:1
+FA 20:3
+FA 22:4
+FA 24:6
+FA 5:0
+FA 22:1
+FA 13:0
+FA 20:4
+FA 22:5
+FA 22:6
+FA 6:0
+FA 20:0
+FA 19:0
+FA 24:5
+FA 26:0
+FA 8:0
+FA 25:0
+FA 7:0

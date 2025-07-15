@@ -1,0 +1,55 @@
+sample_id	original_sample_id	Age	Genotype	Phenotype	Genotype_Age	Age_Phenotype	Tumor_No	ATF6_expression	GRP78_expression
+D29613_01-AV555	01-AV555	20wk	tg/tg	T	20wk_tg/tg	20wk_T	NA		
+D29614_02-AV604	02-AV604	12wk	tg/tg	T	12wk_tg/tg	12wk_T	3		
+D29615_03-AV612	03-AV612	20wk	tg/tg	T	20wk_tg/tg	20wk_T	NA		
+D29616_04-AV650	04-AV650	20wk	tg/tg	T	20wk_tg/tg	20wk_T	NA		
+D29617_05-AV717	05-AV717	20wk	tg/tg	T	20wk_tg/tg	20wk_T	9		
+D29618_06-AV718	06-AV718	20wk	tg/tg	T	20wk_tg/tg	20wk_T	8		
+D29619_07-AV770	07-AV770	12wk	tg/tg	T	12wk_tg/tg	12wk_T	1		
+D29620_08-AV782.2	08-AV782.2	12wk	tg/tg	T	12wk_tg/tg	12wk_T	1		
+D29621_09-AV791	09-AV791	12wk	tg/tg	T	12wk_tg/tg	12wk_T	3		
+D29622_10-AV794	10-AV794	12wk	tg/tg	T	12wk_tg/tg	12wk_T	1		
+D29623_11-AV833	11-AV833	12wk	tg/tg	T	12wk_tg/tg	12wk_T	5		
+D29624_12-AV967	12-AV967	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	5.120869837	23.50217257
+D29625_13-AV968	13-AV968	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	7.497392279	27.88444959
+D29626_14-AV971	14-AV971	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	4.530663119	23.61102698
+D29627_15-AV972	15-AV972	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	7.602051975	23.72038557
+D29628_16-AV974	16-AV974	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	5.992074477	23.4479337
+D29629_17-AV996	17-AV996	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0		
+D29630_18-AV551	18-AV551	20wk	tg/tg	T	20wk_tg/tg	20wk_T	NA		
+D29631_19-AV572	19-AV572	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29632_20-AV580	20-AV580	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29633_21-AV586	21-AV586	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29634_22-AV589	22-AV589	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29635_23-AV590	23-AV590	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29636_24-AV591	24-AV591	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29637_25-AV598	25-AV598	20wk	fl/fl	NT	20wk_fl/fl	20wk_NT	0		
+D29638_26-AV608	26-AV608	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29639_27-AV609	27-AV609	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29640_28-AV610	28-AV610	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29641_29-AV611	29-AV611	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29642_30-AV802	30-AV802	12wk	fl/fl	NT	12wk_fl/fl	12wk_NT	0		
+D29643_31-AV521	31-AV521	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29644_32-AV527	32-AV527	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29645_33-AV541	33-AV541	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29646_34-AV542	34-AV542	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29647_35-AV543	35-AV543	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29648_36-AV567	36-AV567	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29649_37-AV568	37-AV568	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29650_38-AV570	38-AV570	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29651_39-AV571	39-AV571	20wk	tg/wt	NT	20wk_tg/wt	20wk_NT	0		
+D29652_40-AV579	40-AV579	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29653_41-AV803	41-AV803	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29654_42-AV814	42-AV814	12wk	tg/wt	NT	12wk_tg/wt	12wk_NT	0		
+D29655_43-AV583	43-AV583	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0	2.178077903	23.61102698
+D29656_44-AV584	44-AV584	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0	2.776092338	20.60213894
+D29657_45-AV587	45-AV587	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0	2.405586854	17.93520366
+D29658_46-AV588	46-AV588	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0	2.744206198	20.93805541
+D29659_47-AV596	47-AV596	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0		
+D29660_48-AV597	48-AV597	5wk	tg/wt	NT	5wk_tg/wt	5wk_NT	0		
+D29661_49-AV816	49-AV816	5wk	fl/fl	NT	5wk_fl/fl	5wk_NT	0		
+D29662_50-AV817	50-AV817	5wk	tg/tg	NT	5wk_tg/tg	5wk_NT	0	5.425372628	25.42287977
+D29663_51-AV863	51-AV863	5wk	fl/fl	NT	5wk_fl/fl	5wk_NT	0		
+D29664_52-AV864	52-AV864	5wk	fl/fl	NT	5wk_fl/fl	5wk_NT	0		
+D29665_53-AV865	53-AV865	5wk	fl/fl	NT	5wk_fl/fl	5wk_NT	0		
+D29666_54-AV866	54-AV866	5wk	fl/fl	NT	5wk_fl/fl	5wk_NT	0		

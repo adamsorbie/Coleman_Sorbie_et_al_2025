@@ -1,0 +1,200 @@
+"","logFC","log_pvalue","sig","Feature","Name"
+"pos_83",2.04944779624957,2.74496689115638,"p-value and logFC","pos_83",NA
+"pos_135",3.82892453525555,2.52587790707745,"p-value and logFC","pos_135",NA
+"pos_258",-3.51339874027787,2.95423037339343,"p-value and logFC","pos_258",NA
+"pos_266",4.94844344369448,3.97154658504552,"p-value and logFC","pos_266",NA
+"pos_329",2.33749904566214,1.67834181024405,"p-value and logFC","pos_329",NA
+"pos_330",-2.35069650678042,3.87452032817911,"p-value and logFC","pos_330",NA
+"pos_356",-2.69140827135971,2.64042415035156,"p-value and logFC","pos_356",NA
+"pos_395",3.48642108931398,1.65267287968143,"p-value and logFC","pos_395",NA
+"pos_450",-2.75381171809363,2.73815358683423,"p-value and logFC","pos_450","IV/VI/LV/VL"
+"pos_451",-4.63245162266741,5.22136862344325,"p-value and logFC","pos_451","IV/VI/LV/VL"
+"pos_455",-3.60646782644624,3.81140474192565,"p-value and logFC","pos_455","IT/TI/LT/TL"
+"pos_456",-2.25721859996093,2.16231354812911,"p-value and logFC","pos_456","IT/TI/LT/TL"
+"pos_457",-3.6039489122391,2.5506081873357,"p-value and logFC","pos_457","IT/TI/LT/TL"
+"pos_494",-2.56283211860814,2.09018355324039,"p-value and logFC","pos_494","IL/LI"
+"pos_495",-2.42720909663259,1.95090509617489,"p-value and logFC","pos_495","IL/LI"
+"pos_496",-2.14053153818106,2.50937109033065,"p-value and logFC","pos_496",NA
+"pos_501",-2.27718481182629,4.21862544322176,"p-value and logFC","pos_501",NA
+"pos_502",-2.88290642916619,2.841994395323,"p-value and logFC","pos_502",NA
+"pos_508",-2.19015337723993,1.86815963188711,"p-value and logFC","pos_508",NA
+"pos_532",2.29732159165159,2.12245687587804,"p-value and logFC","pos_532",NA
+"pos_552",-2.38605954081415,1.72885283363967,"p-value and logFC","pos_552","w/o MS2:myo-Inositol-1-phosphate"
+"pos_555",-2.6770938200704,3.32892803269368,"p-value and logFC","pos_555","EL/LE/IL/LI"
+"pos_557",-2.76299148456493,3.37051350379174,"p-value and logFC","pos_557",NA
+"pos_560",-2.0797537266341,2.5299081061591,"p-value and logFC","pos_560","w/o MS2:RIKEN P-VS1 ID-767 from Mouse_Muscle_WT_CTX14_Ctr"
+"pos_565",-2.78053332155148,3.09192512935186,"p-value and logFC","pos_565",NA
+"pos_569",-2.95049783193515,3.59962267087632,"p-value and logFC","pos_569",NA
+"pos_581",-2.06665910730902,2.10061336326091,"p-value and logFC","pos_581",NA
+"pos_589",-3.15479134221622,2.91780689913502,"p-value and logFC","pos_589",NA
+"pos_596",-2.94194391140259,2.8481526363891,"p-value and logFC","pos_596",NA
+"pos_597",-2.0415653010284,2.70944270570742,"p-value and logFC","pos_597","w/o MS2:Michler`s ketone (also known as chemical regent)"
+"pos_601",-3.27396591624949,2.68990806224033,"p-value and logFC","pos_601",NA
+"pos_605",-2.17970741923478,2.4375898912637,"p-value and logFC","pos_605",NA
+"pos_626",-2.1875386909083,2.5506081873357,"p-value and logFC","pos_626","IF/FI/LF/FL"
+"pos_636",3.08680384140894,2.22803330825119,"p-value and logFC","pos_636",NA
+"pos_651",2.02081848471587,1.45477048917135,"p-value and logFC","pos_651",NA
+"pos_676",2.30776367798045,3.09192512935186,"p-value and logFC","pos_676",NA
+"pos_679",-3.38540639465763,3.61812523652909,"p-value and logFC","pos_679",NA
+"pos_680",-3.06174755459138,2.15965571251926,"p-value and logFC","pos_680",NA
+"pos_688",-2.7255340181086,2.64521641015223,"p-value and logFC","pos_688",NA
+"pos_701",-2.34377236766772,2.16141908224766,"p-value and logFC","pos_701",NA
+"pos_702",-2.23906805751232,2.16687401829924,"p-value and logFC","pos_702","w/o MS2:NAE 16:1"
+"pos_727",-2.38835108204583,2.2400120928974,"p-value and logFC","pos_727",NA
+"pos_737",2.07330102348576,2.04360298248752,"p-value and logFC","pos_737",NA
+"pos_749",-4.55854892618705,4.37536386755579,"p-value and logFC","pos_749",NA
+"pos_771",-2.14287754509638,1.33142609437275,"p-value and logFC","pos_771",NA
+"pos_774",3.36304515037041,3.97154658504552,"p-value and logFC","pos_774",NA
+"pos_782",3.04301779647977,2.14806087838205,"p-value and logFC","pos_782",NA
+"pos_806",-3.55823683568251,1.79227077302156,"p-value and logFC","pos_806",NA
+"pos_815",-2.21322663913224,3.81140474192565,"p-value and logFC","pos_815",NA
+"pos_817",2.27492182903381,2.75964813642197,"p-value and logFC","pos_817","w/o MS2:RIKEN P-VS1 ID-1554 from Cell_HEK293_WT_N_Ctr"
+"pos_819",-2.63131978084322,1.46462276551187,"p-value and logFC","pos_819",NA
+"pos_820",2.43534160205852,2.91780689913502,"p-value and logFC","pos_820",NA
+"pos_822",2.64643063308402,2.85413607595988,"p-value and logFC","pos_822",NA
+"pos_836",-2.65493565483591,2.8481526363891,"p-value and logFC","pos_836",NA
+"pos_847",-2.09107312693291,4.38066081997945,"p-value and logFC","pos_847",NA
+"pos_857",2.32750612776391,1.55019465927948,"p-value and logFC","pos_857",NA
+"pos_863",2.13340183623757,2.70944270570742,"p-value and logFC","pos_863",NA
+"pos_867",2.0052414668747,1.57282802560377,"p-value and logFC","pos_867",NA
+"pos_881",2.59927097409356,2.83974199853023,"p-value and logFC","pos_881",NA
+"pos_883",-2.67430586707953,2.03929745205691,"p-value and logFC","pos_883",NA
+"pos_892",-3.22758544631262,3.36786823639394,"p-value and logFC","pos_892",NA
+"pos_913",-2.82305832611051,1.64342731904084,"p-value and logFC","pos_913","w/o MS2:CAR 13:1"
+"pos_925",-2.1308301895079,3.36786823639394,"p-value and logFC","pos_925",NA
+"pos_940",5.13862142792058,3.34823321663897,"p-value and logFC","pos_940",NA
+"pos_949",2.74328370580351,4.50090862808046,"p-value and logFC","pos_949","C20 hydroxy fatty acid"
+"pos_990",-2.83571683747376,1.62594090369801,"p-value and logFC","pos_990",NA
+"pos_992",-2.27835028152116,4.84118593430591,"p-value and logFC","pos_992",NA
+"pos_1001",2.16991997919613,2.58952102590746,"p-value and logFC","pos_1001",NA
+"pos_1003",-2.72137469626717,3.09192512935186,"p-value and logFC","pos_1003",NA
+"pos_1020",-2.5680362913049,1.70801476491397,"p-value and logFC","pos_1020",NA
+"pos_1088",3.39180272954498,2.22431027612878,"p-value and logFC","pos_1088",NA
+"pos_1108",-2.19202183567006,2.30488051672641,"p-value and logFC","pos_1108",NA
+"pos_1115",-2.07652701726932,1.42417027956236,"p-value and logFC","pos_1115","Dioctyl phthalate (also known as the production of plastic)"
+"pos_1134",2.41964703916312,2.58952102590746,"p-value and logFC","pos_1134",NA
+"pos_1185",2.17055979749427,1.50074593048517,"p-value and logFC","pos_1185","w/o MS2:RIKEN P-VS1 ID-3047 from Cell_C2C12_WT_N_4h50AA"
+"pos_1206",2.13656183073745,1.53391884957969,"p-value and logFC","pos_1206","LPE O-16:1"
+"pos_1269",2.09755901061275,1.67453769695078,"p-value and logFC","pos_1269","w/o MS2:RIKEN P-VS1 ID-3617 from Mouse_Macrophage_WT_N_F1AA"
+"pos_1276",-2.80685758480635,2.29951827343375,"p-value and logFC","pos_1276",NA
+"pos_1286",2.3842385573437,2.12245687587804,"p-value and logFC","pos_1286","w/o MS2:SL 10:0;O/13:0;O"
+"pos_1330",3.59317577216078,2.53978514601297,"p-value and logFC","pos_1330","LPC O-16:0"
+"pos_1371",3.59069332582745,2.53978514601297,"p-value and logFC","pos_1371","w/o MS2:LPC O-18:3"
+"pos_1375",4.34130517588554,2.98648213601754,"p-value and logFC","pos_1375","LPC O-18:1"
+"pos_1378",3.97636903293656,2.81897434522924,"p-value and logFC","pos_1378","w/o MS2:LPC O-18:0"
+"pos_1414",2.75756930654523,2.17346248005082,"p-value and logFC","pos_1414",NA
+"pos_1455",3.3340794960069,3.61508985189892,"p-value and logFC","pos_1455","w/o MS2:DG O-8:0_24:5"
+"pos_1472",2.03201742817043,1.53837760663647,"p-value and logFC","pos_1472","w/o MS2:RIKEN P-VS1 ID-5407 from Mouse_Feces_WT_N_Ctr"
+"pos_1501",-2.20870872789889,2.38003621481754,"p-value and logFC","pos_1501","w/o MS2:TG 8:0_8:0_16:0"
+"pos_1514",2.48971745075103,1.55341353924002,"p-value and logFC","pos_1514","w/o MS2:ST 24:1;O4/14:1"
+"pos_1521",-2.36164765355701,2.71739267384533,"p-value and logFC","pos_1521","RIKEN P-VS1 ID-6421 from Mouse_Feces_WT_ABX_Ctr"
+"pos_1544",2.14075268568215,1.37891002031494,"p-value and logFC","pos_1544","w/o MS2:CE 17:1"
+"neg_98",-3.63964173210831,2.0431083444763,"p-value and logFC","neg_98",NA
+"neg_121",3.31210142067581,2.35106632118396,"p-value and logFC","neg_121",NA
+"neg_122",-2.39601214289048,2.1344019166635,"p-value and logFC","neg_122",NA
+"neg_127",7.37563344208357,6.76244642908569,"p-value and logFC","neg_127",NA
+"neg_152",-4.36447585182835,2.86502640873104,"p-value and logFC","neg_152",NA
+"neg_164",-3.2114891398277,2.46739033429772,"p-value and logFC","neg_164",NA
+"neg_166",4.01422931410654,2.55088584826773,"p-value and logFC","neg_166",NA
+"neg_182",-3.56418626505392,3.69453281487306,"p-value and logFC","neg_182",NA
+"neg_201",-3.59379425293632,4.21862544322176,"p-value and logFC","neg_201",NA
+"neg_202",-3.58058209676909,3.97154658504552,"p-value and logFC","neg_202",NA
+"neg_227",-2.10511410232887,1.69684665748776,"p-value and logFC","neg_227",NA
+"neg_229",-2.39322010358349,2.00724747195467,"p-value and logFC","neg_229",NA
+"neg_230",-3.1837564022507,2.04360298248752,"p-value and logFC","neg_230",NA
+"neg_264",-2.9329632595493,1.33802116326652,"p-value and logFC","neg_264",NA
+"neg_275",-2.24702357458963,1.7205149566941,"p-value and logFC","neg_275",NA
+"neg_290",-2.847721804483,2.19179627444115,"p-value and logFC","neg_290","Naringenin"
+"neg_297",-3.28859633069381,1.50074593048517,"p-value and logFC","neg_297",NA
+"neg_298",-3.54969403310138,2.46739033429772,"p-value and logFC","neg_298",NA
+"neg_299",2.55946532012879,2.841994395323,"p-value and logFC","neg_299",NA
+"neg_306",2.30217956127957,1.4917646852457,"p-value and logFC","neg_306",NA
+"neg_312",2.11452245285525,1.67834181024405,"p-value and logFC","neg_312","FA 18:0"
+"neg_319",-2.15719839882113,2.39229099834194,"p-value and logFC","neg_319",NA
+"neg_333",-2.83048460358446,1.91136462609343,"p-value and logFC","neg_333",NA
+"neg_347",2.10779151389439,2.38160113973329,"p-value and logFC","neg_347",NA
+"neg_356",3.06898004896324,2.17971186382214,"p-value and logFC","neg_356","RIKEN N-VS1 ID-790 from Mouse_Macrophage_WT_N_F1AA"
+"neg_418",-2.21115343762297,1.50696889060103,"p-value and logFC","neg_418","LPG 4:0"
+"neg_474",2.51163731043958,1.98505598548472,"p-value and logFC","neg_474","FA 22:5"
+"neg_477",3.07838765534356,2.841994395323,"p-value and logFC","neg_477","FA 22:4"
+"neg_517",-2.32520581620693,2.28015469232647,"p-value and logFC","neg_517",NA
+"neg_525",-2.00702870911189,1.79348366937198,"p-value and logFC","neg_525",NA
+"neg_553",2.16173291693522,2.71739267384533,"p-value and logFC","neg_553","FA 24:6"
+"neg_582",2.90516925586551,1.67276461886426,"p-value and logFC","neg_582","w/o MS2:RIKEN N-VS1 ID-1155 from Mouse_AdrenalGlands_fads2KO_N_Ctr"
+"neg_593",2.07756853199882,1.62633664008392,"p-value and logFC","neg_593","w/o MS2:RIKEN N-VS1 ID-1169 from Mouse_AdrenalGlands_WT_N_Ctr"
+"neg_607",-4.38753585254582,1.81110936986469,"p-value and logFC","neg_607",NA
+"neg_627",-2.51990235948945,1.33687689118766,"p-value and logFC","neg_627",NA
+"neg_628",-3.14765532310264,1.70801476491397,"p-value and logFC","neg_628",NA
+"neg_634",3.4337987741786,1.97449770143957,"p-value and logFC","neg_634","w/o MS2:RIKEN N-VS1 ID-1234 from Mouse_Feces_WT_N_Ctr"
+"neg_644",-2.70583989846096,2.15965571251926,"p-value and logFC","neg_644",NA
+"neg_646",5.75446649443596,2.74525573230877,"p-value and logFC","neg_646","w/o MS2:RIKEN N-VS1 ID-1242 from Mouse_Feces_WT_N_Ctr"
+"neg_647",3.42279180264901,3.20225492517286,"p-value and logFC","neg_647","w/o MS2:RIKEN N-VS1 ID-1242 from Mouse_Feces_WT_N_Ctr"
+"neg_695",3.07184669079116,1.62594090369801,"p-value and logFC","neg_695",NA
+"neg_758",-2.50058374322867,2.2400120928974,"p-value and logFC","neg_758",NA
+"neg_762",2.88506710054922,2.25761596842831,"p-value and logFC","neg_762","w/o MS2:FAHFA 22:6/3:0"
+"neg_764",-2.76376921680479,2.09018355324039,"p-value and logFC","neg_764","w/o MS2:RIKEN N-VS1 ID-1465 from Blank"
+"neg_772",-3.19320251955842,1.95102574401428,"p-value and logFC","neg_772",NA
+"neg_789",-2.16520504943244,3.37051350379174,"p-value and logFC","neg_789",NA
+"neg_848",2.34883590932941,2.38160113973329,"p-value and logFC","neg_848","w/o MS2:LPC O-8:0"
+"neg_855",2.52130753776122,2.71739267384533,"p-value and logFC","neg_855",NA
+"neg_924",2.28887719757212,2.28816046415675,"p-value and logFC","neg_924",NA
+"neg_932",-3.64115785433395,1.76357435113973,"p-value and logFC","neg_932",NA
+"neg_941",-2.21508733126902,1.62594090369801,"p-value and logFC","neg_941","FA 30:8"
+"neg_956",3.10594852117881,2.55477758212695,"p-value and logFC","neg_956","LPE O-16:0"
+"neg_985",-3.35015570108355,2.841994395323,"p-value and logFC","neg_985",NA
+"neg_987",2.37774170057124,2.99336751851194,"p-value and logFC","neg_987","w/o MS2:RIKEN N-VS1 ID-1766 from Mouse_SmallIntestine_WT_N_F1"
+"neg_1004",-2.38491932762498,1.33351802217478,"p-value and logFC","neg_1004",NA
+"neg_1104",2.80568746828118,2.11277256290235,"p-value and logFC","neg_1104","w/o MS2:LPG O-16:3"
+"neg_1117",-5.08100112879576,4.84118593430591,"p-value and logFC","neg_1117","w/o MS2:SM 12:2;2O/2:0"
+"neg_1135",3.0837761878097,2.53978514601297,"p-value and logFC","neg_1135","LPE O-18:0"
+"neg_1139",2.51360791686674,2.74525573230877,"p-value and logFC","neg_1139","w/o MS2:LPG 15:1"
+"neg_1161",2.25456826932524,1.58560271498898,"p-value and logFC","neg_1161","w/o MS2:LPG O-16:0"
+"neg_1243",-3.24027972043134,1.90787789347653,"p-value and logFC","neg_1243",NA
+"neg_1257",-4.93857715595283,2.86502640873104,"p-value and logFC","neg_1257","w/o MS2:PA 3:0_18:4"
+"neg_1266",-3.83019213778209,2.13182413806718,"p-value and logFC","neg_1266",NA
+"neg_1272",-4.94015317717582,1.57117228344659,"p-value and logFC","neg_1272","ST 24:1;O5;S"
+"neg_1306",3.13660964741803,2.25692340417781,"p-value and logFC","neg_1306","w/o MS2:LPE O-20:1"
+"neg_1386",-3.1997519411014,2.39204610806127,"p-value and logFC","neg_1386","RIKEN N-VS1 ID-2229 from Mouse_BAT_fads2KO_N_Ctr"
+"neg_1398",-3.44706487562517,2.13182413806718,"p-value and logFC","neg_1398",NA
+"neg_1405",2.34332525793757,1.73602328929807,"p-value and logFC","neg_1405","w/o MS2:LPS 17:1"
+"neg_1411",-4.36684356382005,1.85074944144651,"p-value and logFC","neg_1411","w/o MS2:RIKEN N-VS1 ID-2278 from Mouse_Feces_WT_N_Ctr"
+"neg_1434",2.42104096044331,1.31768059544631,"p-value and logFC","neg_1434","w/o MS2:RIKEN N-VS1 ID-2307 from Mouse_SmallIntestine_WT_N_F1AA"
+"neg_1445",-2.23485783739663,1.34513765362374,"p-value and logFC","neg_1445","RIKEN N-VS1 ID-2317 from Mouse_Feces_WT_N_Ctr"
+"neg_1477",-2.05509865870857,1.39003545549518,"p-value and logFC","neg_1477","w/o MS2:RIKEN N-VS1 ID-2374 from Blank"
+"neg_1536",3.9102793684224,2.38833489786563,"p-value and logFC","neg_1536","w/o MS2:SL 10:1;O/19:2"
+"neg_1540",-4.17273871599596,2.30488051672641,"p-value and logFC","neg_1540",NA
+"neg_1551",-3.60825065449313,2.38833489786563,"p-value and logFC","neg_1551","RIKEN N-VS1 ID-2443 from Mouse_Feces_WT_N_Ctr"
+"neg_1563",2.16226690969916,1.53605052225492,"p-value and logFC","neg_1563","w/o MS2:SL 12:2;O/18:5"
+"neg_1575",2.25876297433599,2.15805262619568,"p-value and logFC","neg_1575",NA
+"neg_1650",-3.05012560042031,2.439744093488,"p-value and logFC","neg_1650","RIKEN N-VS1 ID-2589 from Mouse_Feces_WT_N_Ctr"
+"neg_1656",-2.27219764827297,1.53391884957969,"p-value and logFC","neg_1656",NA
+"neg_1668",2.97692808869215,2.23134951429542,"p-value and logFC","neg_1668","RIKEN N-VS1 ID-2617 from Mouse_Feces_WT_ABX_Ctr"
+"neg_1692",2.78087591945903,1.88231296336059,"p-value and logFC","neg_1692","w/o MS2:SL 14:3;O/16:2;O"
+"neg_1694",3.22715642273849,2.50557091927417,"p-value and logFC","neg_1694","w/o MS2:LPC O-18:1"
+"neg_1698",2.00213739988985,1.33687689118766,"p-value and logFC","neg_1698","w/o MS2:NAGly 14:0/17:0"
+"neg_1699",2.66199935771673,1.62633664008392,"p-value and logFC","neg_1699",NA
+"neg_1725",3.19141419526048,2.26093699246817,"p-value and logFC","neg_1725","w/o MS2:LPC O-18:0"
+"neg_1743",2.61432414877,1.9416497941067,"p-value and logFC","neg_1743","FA 38:4"
+"neg_1746",-2.48979718864517,1.74753913243587,"p-value and logFC","neg_1746",NA
+"neg_1777",-2.74451646406361,1.34141522988573,"p-value and logFC","neg_1777","LPC 18:2"
+"neg_1778",-2.61145041977319,1.46890042471034,"p-value and logFC","neg_1778","LPC 18:2"
+"neg_1828",-2.80301122641775,2.57859843490418,"p-value and logFC","neg_1828",NA
+"neg_1837",2.45824040691153,2.11277256290235,"p-value and logFC","neg_1837","w/o MS2:PS 3:0_18:4"
+"neg_1861",-2.80833259850721,1.67834181024405,"p-value and logFC","neg_1861",NA
+"neg_1874",2.72413223372498,2.10241097226731,"p-value and logFC","neg_1874",NA
+"neg_1920",-2.57366818789843,1.65341697336447,"p-value and logFC","neg_1920",NA
+"neg_1981",-3.18683838088027,1.36126921701285,"p-value and logFC","neg_1981",NA
+"neg_1983",3.00269961013008,2.0431083444763,"p-value and logFC","neg_1983","w/o MS2:PS 2:0_20:0"
+"neg_1987",-2.56663788901167,2.23535894323813,"p-value and logFC","neg_1987",NA
+"neg_2000",2.06366970626892,1.79746795753109,"p-value and logFC","neg_2000","w/o MS2:RIKEN N-VS1 ID-3080 from Mouse_Ear_fads2KO_N_Ctr"
+"neg_2011",2.16074921302753,1.40425589415279,"p-value and logFC","neg_2011",NA
+"neg_2021",-2.10618379120107,1.60796235553981,"p-value and logFC","neg_2021","w/o MS2:RIKEN N-VS1 ID-3111 from Mouse_AdrenalGlands_fads2KO_N_Ctr"
+"neg_2116",-3.01263729899481,1.62633664008392,"p-value and logFC","neg_2116","w/o MS2:PG O-16:1_10:0"
+"neg_2145",-2.22059596713435,2.71739267384533,"p-value and logFC","neg_2145","w/o MS2:PG 2:0_24:4"
+"neg_2154",-2.4340732887136,2.55477758212695,"p-value and logFC","neg_2154","w/o MS2:PG 4:0_22:3"
+"neg_2210",-2.66193413636997,2.26664443900355,"p-value and logFC","neg_2210","w/o MS2:PG 3:0_24:2"
+"neg_2224",2.03122982997926,1.32447169865322,"p-value and logFC","neg_2224",NA
+"neg_2236",-3.15284949968158,2.29951827343375,"p-value and logFC","neg_2236",NA
+"neg_2288",-3.38521276068314,2.39295328483743,"p-value and logFC","neg_2288","RIKEN N-VS1 ID-3970 from Mouse_Feces_WT_N_Ctr"
+"neg_2348",2.03141662117126,1.45410680511503,"p-value and logFC","neg_2348",NA
+"neg_2350",-2.22900697090193,2.01416282222605,"p-value and logFC","neg_2350","w/o MS2:SMGDG O-22:6_4:0"

@@ -1,0 +1,63 @@
+sample_id	mouse_id	Genotype	Age	Genotype_Age	Tissue	Phenotype	Tissue_Age	Age_Genotype	Age_Phenotype	Exact_Age	Tumor_No	Cage	Litter	Cage_Genotype	Gender	ATF6_expression	GRP78_expression
+D29668_01-AV967	AV967	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.3	0	T	162	T_tg/tg	f	5.120869837	23.50217257
+D29669_02-AV968	AV968	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.3	0	T	162	T_tg/tg	f	7.497392279	27.88444959
+D29670_03-AV971	AV971	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.3	0	U	165	U_tg/tg	m	4.530663119	23.61102698
+D29671_04-AV972	AV972	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.3	0	U	165	U_tg/tg	m	7.602051975	23.72038557
+D29672_05-AV974	AV974	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.3	0	V	165	V_tg/tg	f	5.992074477	23.4479337
+D29673_06-AV996	AV996	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5.1	0	W	170	W_tg/tg	f		
+D29675_08-AV583	AV583	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	5.3	0	F	141	F_tg/wt	f	2.178077903	23.61102698
+D29676_09-AV584	AV584	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	5.3	0	F	141	F_tg/wt	f	2.776092338	20.60213894
+D29677_10-AV587	AV587	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	5.1	0	G	140	G_tg/wt	m	2.405586854	17.93520366
+D29678_11-AV588	AV588	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	4.9	0	G	140	G_tg/wt	m	2.744206198	20.93805541
+D29679_12-AV596	AV596	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	4.9	0	H	139	H_tg/wt	m		
+D29680_13-AV597	AV597	tg/wt	5wk	tg/wt_5wk	Healthy	NT	Healthy_5wk	5wk_tg/wt	5wk_NT	4.9	0	H	139	H_tg/wt	m		
+D29683_16-AV816	AV816	fl/fl	5wk	fl/fl_5wk	Healthy	NT	Healthy_5wk	5wk_fl/fl	5wk_NT	5	0	Q	159	Q_fl/fl	m		
+D29684_17-AV817	AV817	tg/tg	5wk	tg/tg_5wk	Healthy	NT	Healthy_5wk	5wk_tg/tg	5wk_NT	5	0	Q	159	Q_tg/tg	m	5.425372628	25.42287977
+D29685_18-AV863	AV863	fl/fl	5wk	fl/fl_5wk	Healthy	NT	Healthy_5wk	5wk_fl/fl	5wk_NT	5	0	S	160	S_fl/fl	m		
+D29686_19-AV864	AV864	fl/fl	5wk	fl/fl_5wk	Healthy	NT	Healthy_5wk	5wk_fl/fl	5wk_NT	5	0	S	160	S_fl/fl	m		
+D29691_24-AV580	AV580	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	12	0	F	141	F_fl/fl	f		
+D29692_25-AV608	AV608	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	11.7	0	I	144	I_fl/fl	m		
+D29699_32-AV572	AV572	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	20.3	0	E	138	E_fl/fl	m		
+D29700_33-AV586	AV586	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	18	0	G	140	G_fl/fl	m		
+D29701_34-AV589	AV589	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	18	0	G	140	G_fl/fl	m		
+D29702_35-AV590	AV590	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	18	0	G	140	G_fl/fl	m		
+D29703_36-AV591	AV591	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	18.3	0	G	140	G_fl/fl	m		
+D29704_37-AV598	AV598	fl/fl	20wk	fl/fl_20wk	Healthy	NT	Healthy_20wk	20wk_fl/fl	20wk_NT	18.3	0	H	139	H_fl/fl	m		
+D29707_40-AV521	AV521	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	20	0	A	131	A_tg/wt	m		
+D29708_41-AV527	AV527	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	20	0	B	131	B_tg/wt	f		
+D29709_42-AV541	AV541	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	19.9	0	C	133	C_tg/wt	m		
+D29710_43-AV542	AV542	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	19.9	0	C	133	C_tg/wt	m		
+D29711_44-AV543	AV543	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	20.1	0	C	133	C_tg/wt	m		
+D29712_45-AV571	AV571	tg/wt	20wk	tg/wt_20wk	Healthy	NT	Healthy_20wk	20wk_tg/wt	20wk_NT	20.3	0	E	138	E_tg/wt	m		
+D29715_48-AV551T	AV551T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	17.3	NA	C	136	C_tg/tg	m		
+D29716_49-AV555T	AV555T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	18.3	NA	D	136	D_tg/tg	f		
+D29717_50-AV555TA	AV555TA	tg/tg	20wk	tg/tg_20wk	Tumor_adjacent	T	Tumor_adjacent_20wk	20wk_tg/tg	20wk_T	18.3	NA	D	136	D_tg/tg	f		
+D29718_51-AV612T	AV612T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	18	NA	I	144	I_tg/tg	m		
+D29719_52-AV612TA	AV612TA	tg/tg	20wk	tg/tg_20wk	Tumor_adjacent	T	Tumor_adjacent_20wk	20wk_tg/tg	20wk_T	18	NA	I	144	I_tg/tg	m		
+D29720_53-AV650T	AV650T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	16.7	NA	J	142	J_tg/tg	f		
+D29721_54-AV650TA	AV650TA	tg/tg	20wk	tg/tg_20wk	Tumor_adjacent	T	Tumor_adjacent_20wk	20wk_tg/tg	20wk_T	16.7	NA	J	142	J_tg/tg	f		
+D29722_55-AV717T	AV717T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	16.9	9	K	152	K_tg/tg	m		
+D29723_56-AV718T	AV718T	tg/tg	20wk	tg/tg_20wk	Tumor	T	Tumor_20wk	20wk_tg/tg	20wk_T	16.9	8	K	152	K_tg/tg	m		
+D29733_66-AV604T	AV604T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12.3	3	I	143	I_tg/tg	m		
+D29734_67-AV770T	AV770T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12.1	1	L	147a	L_tg/tg	f		
+D29735_68-AV791T	AV791T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12.1	3	N	152a	N_tg/tg	f		
+D29736_69-AV782.2T	AV7822T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12.1	1	M	149	M_tg/tg	f		
+D29737_70-AV794T	AV794T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12	1	N	152a	N_tg/tg	f		
+D29738_71-AV604TA	AV604TA	tg/tg	12wk	tg/tg_12wk	Tumor_adjacent	T	Tumor_adjacent_12wk	12wk_tg/tg	12wk_T	12.3	3	I	143	I_tg/tg	m		
+D29739_72-AV770TA	AV770TA	tg/tg	12wk	tg/tg_12wk	Tumor_adjacent	T	Tumor_adjacent_12wk	12wk_tg/tg	12wk_T	12.1	1	L	147a	L_tg/tg	f		
+D29740_73-AV791TA	AV791TA	tg/tg	12wk	tg/tg_12wk	Tumor_adjacent	T	Tumor_adjacent_12wk	12wk_tg/tg	12wk_T	12.1	3	N	152a	N_tg/tg	f		
+D29741_74-AV782.2TA	AV7822TA	tg/tg	12wk	tg/tg_12wk	Tumor_adjacent	T	Tumor_adjacent_12wk	12wk_tg/tg	12wk_T	12.1	1	M	149	M_tg/tg	f		
+D29742_75-AV794TA	AV794TA	tg/tg	12wk	tg/tg_12wk	Tumor_adjacent	T	Tumor_adjacent_12wk	12wk_tg/tg	12wk_T	12	1	N	152a	N_tg/tg	f		
+D29743_76-AV833T	AV833T	tg/tg	12wk	tg/tg_12wk	Tumor	T	Tumor_12wk	12wk_tg/tg	12wk_T	12.4	5	R	158	R_tg/tg	f		
+D29746_79-AV567	AV567	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12	0	D	138	D_tg/wt	f		
+D29747_80-AV568	AV568	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12	0	D	138	D_tg/wt	f		
+D29748_81-AV570	AV570	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12.6	0	D	138	D_tg/wt	f		
+D29749_82-AV579	AV579	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12	0	F	141	F_tg/wt	f		
+D29750_83-AV814	AV814	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12.3	0	P	157	P_tg/wt	m		
+D29751_84-AV803	AV803	tg/wt	12wk	tg/wt_12wk	Healthy	NT	Healthy_12wk	12wk_tg/wt	12wk_NT	12.4	0	O	156	O_tg/wt	f		
+D29752_85-AV865	AV865	fl/fl	5wk	fl/fl_5wk	Healthy	NT	Healthy_5wk	5wk_fl/fl	5wk_NT	5	0	S	160	S_fl/fl	m		
+D29753_86-AV866	AV866	fl/fl	5wk	fl/fl_5wk	Healthy	NT	Healthy_5wk	5wk_fl/fl	5wk_NT	5	0	S	160	S_fl/fl	m		
+D29758_91-AV609	AV609	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	11.7	0	I	144	I_fl/fl	m		
+D29759_92-AV610	AV610	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	12	0	I	144	I_fl/fl	m		
+D29760_93-AV611	AV611	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	12	0	I	144	I_fl/fl	m		
+D29761_94-AV802	AV802	fl/fl	12wk	fl/fl_12wk	Healthy	NT	Healthy_12wk	12wk_fl/fl	12wk_NT	12.4	0	O	156	O_fl/fl	f		

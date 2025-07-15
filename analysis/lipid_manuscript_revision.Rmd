@@ -1,0 +1,2747 @@
+---
+title: "Revision"
+author: "Adam Sorbie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 16S re-analysis 
+
+
+
+* basic alpha and beta-diversity
+* differential abundance
+* correlations between shannon effective and GRP78 expression and tumor number
+* passenger-driver heatmap
+* potentially re-run ML 
+* Mean gunifrac dissimilarity 
+
+Reviewer specific questions 
+
+* plots for all diversity measures inc. GUniFrac distance
+* differential abundance between w5 and 12 - LEfSe or wilcoxon rank sum test
+* interaction between age and genotype 
+
+
+Ask about spatial as well 
+
+```{r, include=FALSE}
+library(ggpubr)
+library(ComplexHeatmap)
+library(ggplotify)
+library(rstatix)
+library(ggprism)
+library(zoo)
+library(lefser)
+library(picante)
+library(doParallel)
+source("analysis_functions.R")
+source("Rhea_functions.R")
+conflicted::conflict_prefer_all("dplyr")
+conflicted::conflicts_prefer(purrr::map)
+```
+Color palettes and comparisons
+```{r}
+pal <- c("fl/fl" = "#BBBDC0","tg/wt" = "#445975" ,"tg/tg" = "#ED1C24")
+genotype_comps <- list(c("fl/fl", "tg/wt"), c("fl/fl", "tg/tg"), c("tg/wt", "tg/tg"))
+genotype_age_comps <- list(c("fl/fl_5wk", "tg/wt_5wk"), c("fl/fl_5wk", "tg/tg_5wk"), c("tg/wt_5wk", "tg/tg_5wk"), 
+                           c("fl/fl_12wk", "tg/wt_12wk"), c("fl/fl_12wk", "tg/tg_12wk"), c("tg/wt_12wk", "tg/tg_12wk"),
+                           c("fl/fl_20wk", "tg/wt_20wk"), c("fl/fl_20wk", "tg/tg_20wk"), c("tg/wt_20wk", "tg/tg_20wk"))
+age_comps <- list(c("5wk", "12wk"), c("5wk", "20wk"), c("12wk", "20wk"))
+tumor_comps <- list(c("NT", "TA"), c("NT", "T"), c("TA", "T"))
+```
+
+### Tissue
+
+```{r}
+ps <- import_as_pseq("../data/zOTUs tables combined AR AS/Analysis_536/ZOTUs-Table_AV.tab",
+                     "../data/tissue/16S/av_tissue_meta.tab",
+                     "../data/zOTUs tables combined AR AS/Analysis_536/ZOTUs-Tree-nj.tre"
+                     ) %>% 
+  format_taxonomy()
+```
+
+Remove ASVs from BONCAT data not present in mucosal 
+
+```{r}
+# 1.6% = 1 sample 1 / 62
+ps <- filter_ps(ps, prev=0.016, abund = 0) %>% 
+  transform("mss")
+```
+
+
+#### 5wk alpha-diversity
+Key question is impact of ATF6 on microbiota  
+
+```{r}
+alpha_div <- Rhea.Alpha_Diversity(ps)
+faiths.pd <- pd(ps_to_asvtab(ps) %>%
+    t(), phy_tree(ps), include.root = F)
+# this isn't the best way to do this but it works for now
+alpha_div$Faiths.PD <- faiths.pd$PD
+```
+
+5wk - genotype 
+```{r}
+metrics <- c("Richness", "Shannon.Effective", "Faiths.PD")
+
+map(metrics, function(x) plot_boxplot(filter(alpha_div, Age == "5wk"), variable_col = "Genotype", cols=pal,
+                                      value_col = x, group.order = c("fl/fl", "tg/wt", "tg/tg"), multiple_groups = T, 
+                                      comparisons_list = list(c("fl/fl", "tg/wt"), c("fl/fl", "tg/tg"), c("tg/wt", "tg/tg"))
+                                      )
+    )
+
+```
+
+5wk - correlation with GRP78
+
+```{r, fig.height=4, fig.width=4.5}
+ggscatter(filter(alpha_div, Age == "5wk" & Genotype != "fl/fl"), x="Shannon.Effective", y="GRP78_expression", add = "reg.line", 
+          add.params = list(fill = "lightgray"), ylab = "Expression (2–∆∆Ct)",
+          conf.int = TRUE, size = 3) +
+  geom_point(aes(color=Genotype), size=3) +
+  stat_cor(label.x = 130, method = "spearman") +
+  #scale_y_continuous(limits = c(0, 30)) +
+  scale_x_continuous(expand=c(0,0), limits = c(70, 170)) + 
+  theme_cowplot() + 
+  theme(axis.title = element_text(size=16),
+        axis.text = element_text(size=14), 
+        legend.position = "None") + 
+  scale_color_manual(values = c("tg/wt" = "#445975", "tg/tg" = "#ED1C24"))
+ggsave("figures-manuscript/shannon_effective_grp78_5wk.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+
+#### 5wk beta-diversity
+
+```{r}
+beta_div_5wk <- Rhea.Beta_Diversity(subset_samples(ps, Age == "5wk"), group_name = "Genotype")
+```
+```{r}
+beta_div_all <- Rhea.Beta_Diversity(ps, group_name = "Genotype_Age")
+```
+
+Mean GUniFrac distance - 5 and 12 week
+
+```{r}
+flfl_samples_5 <- subset_samples(ps, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "fl/fl") %>% rownames()
+tgwt_samples_5 <- subset_samples(ps, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "tg/wt") %>% rownames()
+tgtg_samples_5 <- subset_samples(ps, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "tg/tg") %>% rownames()
+
+flfl_samples_12 <- subset_samples(ps, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "fl/fl") %>% rownames()
+tgwt_samples_12 <- subset_samples(ps, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "tg/wt") %>% rownames()
+tgtg_samples_12 <- subset_samples(ps, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "tg/tg") %>% rownames()
+```
+
+
+```{r}
+tgtg_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_all), tgtg_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+tgwt_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_all), tgwt_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+flfl_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_all), flfl_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+
+tgtg_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_all), tgtg_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+tgwt_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_all), tgwt_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+flfl_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_all), flfl_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+```
+
+```{r}
+gunifrac_tgtg_5 <- simul_col_row_filt(tgtg_vs_flfl_5, tgtg_samples_5, filt="columns")
+colmeans_tgtg_5 <- colMeans(gunifrac_tgtg_5) %>% 
+  as.data.frame() 
+colnames(colmeans_tgtg_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_tgtg_12 <- simul_col_row_filt(tgtg_vs_flfl_12, tgtg_samples_12, filt="columns")
+colmeans_tgtg_12 <- colMeans(gunifrac_tgtg_12) %>% 
+  as.data.frame() 
+colnames(colmeans_tgtg_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+gunifrac_tgwt_5 <- simul_col_row_filt(tgwt_vs_flfl_5, tgwt_samples_5, filt="columns")
+colmeans_tgwt_5 <- colMeans(gunifrac_tgwt_5) %>% 
+  as.data.frame() 
+colnames(colmeans_tgwt_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_tgwt_12 <- simul_col_row_filt(tgwt_vs_flfl_12, tgwt_samples_12, filt="columns")
+colmeans_tgwt_12 <- colMeans(gunifrac_tgwt_12) %>% 
+  as.data.frame() 
+colnames(colmeans_tgwt_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+gunifrac_flfl_5 <- simul_col_row_filt(flfl_vs_flfl_5, flfl_samples_5, filt="columns")
+colmeans_flfl_5 <- colMeans(gunifrac_flfl_5) %>% 
+  as.data.frame() 
+colnames(colmeans_flfl_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_flfl_12 <- simul_col_row_filt(flfl_vs_flfl_12, flfl_samples_12, filt="columns")
+colmeans_flfl_12 <- colMeans(gunifrac_flfl_12) %>% 
+  as.data.frame() 
+colnames(colmeans_flfl_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+wk5_samples <- meta_to_df(ps) %>% filter(Age == "5wk") %>% rownames()
+wk12_samples <- meta_to_df(ps) %>% filter(Age == "12wk") %>% rownames()
+wk20_samples <- meta_to_df(ps) %>% filter(Age == "20wk") %>% rownames()
+```
+
+
+```{r}
+colmeans <- bind_rows(colmeans_tgtg_5,colmeans_tgwt_5, colmeans_flfl_5,
+                      colmeans_tgtg_12,colmeans_tgwt_12, colmeans_flfl_12)
+colmeans <- colmeans %>%
+  rownames_to_column("SampleID") %>% 
+  mutate(Genotype = case_when(SampleID %in% c(flfl_samples_12, flfl_samples_5) ~ "fl/fl",
+                              SampleID %in% c(tgwt_samples_12, tgwt_samples_5) ~ "tg/wt",
+                              SampleID %in% c(tgtg_samples_12, tgtg_samples_5) ~ "tg/tg",
+                              TRUE ~ "other")) %>% 
+  mutate(Age = case_when(SampleID %in% wk5_samples ~ "5wk",
+                         SampleID %in% wk12_samples ~ "12wk",
+                         SampleID %in% wk20_samples ~ "20wk",
+                         TRUE ~ "other"))
+```
+
+
+Mean Gunifrac dist plot 
+
+final plot
+
+```{r}
+colmeans %>% 
+  filter(!grepl("TA",SampleID)) %>% 
+ggboxplot(x="Genotype", y = "Mean_Gunifrac_Dist", order = c("fl/fl", "tg/wt", "tg/tg"), fill="Genotype", palette = pal, ylab = "Mean GUniFrac Distance\nrelative to control", xlab = "") + 
+  geom_point(aes(color=Genotype), size = 1.5, position = position_jitterdodge()) + 
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) + 
+  facet_wrap(vars(fct_relevel(Age, "5wk", "12wk"))) +
+  scale_y_continuous(limits = c(0.2, 0.65), breaks = seq(0.3, 0.6, by=0.1)) +
+  theme(legend.position = "None") +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.format", hide.ns = T, step.increase = 0.05)
+
+ggsave("figures-manuscript/Mean_gu_dist_5_12wk_wo_ta.pdf", device = "pdf", dpi=300, height = 5, width = 7)
+```
+Correlation between Mean GUnifrac distance and GRP78 expression
+
+```{r}
+meta_5wk <- meta_to_df(subset_samples(ps, Age == "5wk")) 
+colmeans_5wk <- colmeans_5wk %>%
+  column_to_rownames("SampleID") %>%
+  merge(., meta_5wk[c("GRP78_expression")], by=0)
+```
+
+
+```{r}
+ggscatter(colmeans_5wk, x="Mean_Gunifrac_Dist", y="GRP78_expression", add = "reg.line", 
+          add.params = list(fill = "lightgray"), ylab = "Expression (2–∆∆Ct)",
+          conf.int = TRUE, size = 3) +
+  geom_point(aes(color=Genotype), size=3) +
+  stat_cor(label.x = 0.45, method = "spearman") +
+  scale_y_continuous(limits = c(0, 30)) +
+  scale_x_continuous(expand=c(0,0), limits = c(0.4,0.55)) + 
+  theme_cowplot() + 
+  theme(axis.title = element_text(size=16),
+        axis.text = element_text(size=14), 
+        legend.position = "None") + 
+  scale_color_manual(values = c("tg/wt" = "#445975", "tg/tg" = "#ED1C24"))
+ggsave("figures-manuscript/mean_gunifrac_grp78_5wk.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+
+#### 12wk alpha-diversity
+12wk- genotype
+
+```{r}
+metrics <- c("Richness", "Shannon.Effective", "Faiths.PD")
+
+map(metrics, function(x) plot_boxplot(filter(alpha_div, Age == "12wk"), variable_col = "Genotype", cols=pal,
+                                      value_col = x, group.order = c("fl/fl", "tg/wt", "tg/tg"), multiple_groups = T, 
+                                      comparisons_list = list(c("fl/fl", "tg/wt"), c("fl/fl", "tg/tg"), c("tg/wt", "tg/tg"))
+                                      )
+    )
+
+```
+
+#### 12wk beta-diversity
+
+```{r}
+beta_div_12wk <- Rhea.Beta_Diversity(subset_samples(ps, Age == "12wk"), group_name = "Genotype")
+```
+#### Alpha and beta-diversity comparison all ages and genotypes 
+
+Alpha-diversity between genotypes, with shape encoding Tissue and faceting by age 
+```{r}
+alpha_div %>%  
+  ggplot(
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Richness,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(size = 1.5,, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Richness") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk", "20wk"), ncol = 3) +
+     theme_classic2() +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+ggsave("figures-manuscript/richness_age_genotype.pdf", dpi = 300, height = 5, width = 7)
+```
+
+```{r}
+alpha_div %>%  
+  ggplot(
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Shannon.Effective,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(size = 1.5,, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Shannon Effective") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk", "20wk"), ncol = 3) +
+     theme_classic2() +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+ggsave("figures-manuscript/shannon_effective_age_genotype.pdf", dpi = 300, height = 5, width = 7)
+```
+
+
+Beta-diversity
+
+```{r}
+pdf("figures-manuscript/genotype_age_pairwise-beta-diversity-NMDS.pdf")
+beta_div_all <- Rhea.Beta_Diversity(ps, group_name = "Genotype_Age")
+dev.off()
+```
+
+
+#### Differential abundance 
+
+##### LEfSe
+
+5wk to 12wk tg/tg
+
+What changes with the tumor?
+```{r}
+ps_5_12_tg <- subset_samples(ps, Genotype == "tg/tg" & Age != "20wk") %>%
+  filter_ps()
+tgtg_5_12_res <- run_lefser(ps_5_12_tg, group_col = "Age", lda.threshold = 3)
+lefserPlot(tgtg_5_12_res) + 
+  scale_fill_manual(values = c("5wk" = "#183A37" , "12wk" = "#ED1C24"))
+ggsave("tgtg_5_12_lefse.pdf", device = "pdf", dpi=300, width = 8, height = 6)
+```
+5wk to 12wk tg/wt
+
+What changes with prolonged ATF6 expression ?
+```{r}
+ps_5_12_tgwt <- subset_samples(ps, Genotype == "tg/wt" & Age != "20wk") %>%
+  filter_ps()
+tgwt_5_12_res <- run_lefser(ps_5_12_tgwt, group_col = "Age", lda.threshold = 3)
+lefserPlot(tgwt_5_12_res)
+```
+5wk to 12wk fl/fl
+
+```{r}
+ps_5_12_fl <- subset_samples(ps, Genotype == "fl/fl" & Age != "20wk") %>%
+  filter_ps()
+flfl_5_12_res <- run_lefser(ps_5_12_fl, group_col = "Age", lda.threshold = 3)
+lefserPlot(flfl_5_12_res)
+```
+
+##### Heatmap of taxa that change between 5wk and 12wk
+
+```{r}
+source("../scripts/heatmap_funcs.R")
+ps_hmap <- subset_samples(ps, Genotype != "tg/wt" & Age != "20wk") 
+taxa_plot <- tgtg_5_12_res$Names
+```
+
+```{r}
+ord <- c(meta_to_df(ps) %>% filter(Genotype == "fl/fl" & Age == "5wk") %>% rownames(),
+         meta_to_df(ps) %>% filter(Genotype == "fl/fl" & Age == "12wk") %>% rownames(),
+           meta_to_df(ps) %>% filter(Genotype == "tg/tg" & Age == "5wk") %>% rownames(),
+         meta_to_df(ps) %>% filter(Genotype == "tg/tg" & Age == "12wk") %>% rownames())
+```
+
+```{r}
+var_cols <- list("5wk_fl/fl" = "#BBBDC0", "12wk_fl/fl" = "#ED1C24", 
+                 "5wk_tg/tg" = "#BBBDC0", "12wk_tg/tg" = "#ED1C24")
+cols <- rev(brewer.pal(9, "RdBu"))
+
+p <- plot_heatmap(ps_hmap, taxa_plot, heatmap.colors = cols, variable = "Age_Genotype", 
+                  variable.colors = var_cols, ord = T, col_ord = ord)
+p
+```
+Subtracting those that change with age (in fl/fl)
+
+```{r}
+# all elements of a) not in b)
+tgtg_specific <- setdiff(tgtg_5_12_res$Names, flfl_5_12_res$Names)
+
+p <- plot_heatmap(ps_hmap, tgtg_specific, heatmap.colors = cols, variable = "Age_Genotype", 
+                  variable.colors = var_cols, ord = T, col_ord = ord)
+p
+```
+
+
+```{r}
+p_out <- as.ggplot(grid.grabExpr(draw(p)))
+ggsave("av_pd.pdf",p_out, device = "pdf", dpi=300, width = 12, height = 6)
+```
+
+##### ATF6 DA 5wk 
+
+```{r}
+ps_5 <- subset_samples(ps, Age == "5wk" & Genotype != "fl/fl") %>%
+  filter_ps()
+atf6_5 <- run_lefser(ps_5, group_col = "Genotype", lda.threshold = 3)
+lefserPlot(atf6_5) + 
+  scale_fill_manual(values = pal)
+ggsave("5wk_tgwt_tgtg_lefse.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+##### Genotype DA 5wk 
+
+```{r}
+ps_5 <- subset_samples(ps, Age == "5wk" & Genotype != "tg/wt") %>%
+  filter_ps()
+genotype_5 <- run_lefser(ps_5, group_col = "Genotype", lda.threshold = 3)
+lefserPlot(genotype_5, label.font.size = 4) + 
+  scale_fill_manual(values = pal)
+ggsave("figures-manuscript/5wk_tgwt_tgtg_lefse.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+
+
+##### Tumor DA 12wk
+```{r}
+ps_tumor_12 <- subset_samples(ps, Genotype != "tg/wt" & Age == "12wk") %>%
+  filter_ps()
+tumor_12 <- run_lefser(ps_tumor_12, group_col = "Phenotype", lda.threshold = 3)
+lefserPlot(tumor_12) + 
+  scale_fill_manual(values = c("NT" = "#BBBDC0" , "T" = "#ED1C24"))
+ggsave("12wk_tumor_lefse.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+
+##### Tumor DA 20wk
+```{r}
+ps_tumor_20 <- subset_samples(ps, Genotype != "tg/wt" & Age == "20wk") %>%
+  filter_ps()
+tumor_20 <- run_lefser(ps_tumor_20, group_col = "Phenotype", lda.threshold = 3)
+lefserPlot(tumor_20) + 
+  scale_fill_manual(values = c("NT" = "#BBBDC0" , "T" = "#ED1C24"))
+ggsave("20wk_tumor_lefse.pdf", device = "pdf", dpi=300, width = 8.5, height = 8)
+```
+
+#### Correlation between taxa and ATF6 / GRP78 expression
+
+```{r}
+atf6_cor_5 <- ps_5_12_tg %>% 
+  microbiome::transform("clr") %>% 
+  psmelt() %>%
+  filter(Age == "5wk") %>%
+  group_by(OTU) %>% 
+  cor_test(Abundance, ATF6_expression, method = "spearman") %>% 
+  adjust_pvalue(method = "BH")
+
+grp78_cor_5 <- ps_5_12_tg %>% 
+  microbiome::transform("clr") %>% 
+  psmelt() %>%
+  filter(Age == "5wk") %>%
+  group_by(OTU) %>% 
+  cor_test(Abundance, GRP78_expression, method = "spearman") %>% 
+  adjust_pvalue(method = "BH")
+```
+
+
+#### Correlation between taxa and tumor number
+
+```{r}
+tumor_clr_df_12 <- ps_tumor_12 %>% 
+  microbiome::transform("clr") %>% 
+  psmelt() %>%
+  filter(Genotype == "tg/tg")
+tumor_cors_12 <- tumor_clr_df_12 %>% 
+  group_by(OTU) %>% 
+  cor_test(Abundance, Tumor_No, method = "spearman") %>% 
+  adjust_pvalue(method = "BH") %>% 
+  filter(p.adj < 0.25)
+```
+
+
+
+
+Corrplots 
+```{r}
+plot_cor <- function(df, x, xlab, y, color) {
+  p <- df %>%
+    filter(OTU == y) %>%
+    ggscatter(
+      x = x,
+      y = "Abundance",
+      size = 4,
+      title = y,
+      color = color,
+      xlab = xlab,
+      ylab = paste0("CLR-transformed abundance")
+    ) +
+    stat_cor(method = "spearman") +
+    scale_color_manual(values = pal) +
+    scale_fill_manual(values = pal) +
+    theme_cowplot(font_size = 15) +
+    theme(plot.title = element_text(hjust = 0.5))
+  print(p)
+}
+```
+
+```{r}
+for (i in tumor_cors_12$OTU) {
+  plot_cor(tumor_clr_df_12, x = "Tumor_No", xlab = "Tumor Number", y = i, color = "Genotype")
+  filename <- gsub(":", "_", i)
+  #ggsave(paste0("plots/", filename, "tumor_cor.pdf"), device = "pdf", dpi=300, height = 4, width = 6.5)
+}
+```
+#### Correlation between Alpha-diversity and tumor number - 12wk
+
+```{r}
+alpha_div_tumor <- alpha_div %>% filter(Tissue == "Tumor")
+#plot_cor(alpha_div_tumor, x = "Tumor_No", xlab = "Tumor Number", y =, color = "Genotype")
+
+alpha_div_tumor %>%
+    ggscatter(
+      x = "Tumor_No",
+      y = "Shannon.Effective",
+      size = 4,
+      title = "",
+      add="reg.line",
+      conf.int = T, 
+      color ="Genotype",
+      xlab = "Tumor number",
+      ylab = paste0("Shannon Effective")
+    ) +
+    stat_cor(method = "spearman") +
+    scale_color_manual(values = pal) +
+    scale_fill_manual(values = pal) +
+  scale_y_continuous(limits = c(40, 180), breaks = c(seq(60, 180, by=30))) +
+    theme_cowplot(font_size = 15) +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position ="None")
+ggsave("shannon_effective_tumor_cor.pdf", device = "pdf", dpi=300, height = 4, width = 5.5)
+```
+
+#### Overlap between mouse data and BONCAT
+
+```{r}
+lcfa_zotus_shared <- c("Zotu163; LachnospiraceaeNK4A136group", "Zotu23; LachnospiraceaeNK4A136group", "Zotu165; LachnospiraceaeNK4A136group", "Zotu188; GOTU1512", "Zotu160; Desulfovibrio", "Zotu228; GOTU1512", "Zotu104; GOTU1392", "Zotu506; LachnospiraceaeNK4A136group", "Zotu245; GOTU1512", "Zotu259; Parasutterella", "Zotu237; Parasutterella", "Zotu412; Parasutterella", "Zotu314; Parasutterella")
+
+all_lcfa_zotus <- readxl::read_xlsx("all_LCFA.xlsx") %>% 
+  pull(taxa...1)
+
+boncat_clr <- ps %>% 
+  microbiome::transform("clr") %>% 
+  speedyseq::psmelt()%>% 
+  filter(ASV %in% all_lcfa_zotus)
+
+boncat_rel <- ps %>% 
+  microbiome::transform("compositional") %>% 
+  speedyseq::psmelt() %>% 
+  filter(ASV %in% all_lcfa_zotus) %>% 
+  mutate(Abundance = Abundance * 100)
+```
+
+
+Facet by age with statistical comparison only at each timepoint  
+
+5- 12 
+20wk for supplementary
+```{r}
+stat_tests <- data.frame(.y. = character(0),
+                         group1 = character(0),
+                         group2 = character(0),
+                         n1 = integer(0),
+                         n2 = integer(0),
+                         statistic = double(0),
+                         p = double(0),
+                         p.adj = double(0),
+                         p.adj.signif = character(0),
+                         y.position = double(0),
+                         groups =  I(list()),
+                         xmin = double(0),
+                         xmax = double(0),
+                         zotu = character(0))
+
+for (i in unique(boncat_rel$OTU)) {
+  sub <- filter(boncat_rel, OTU == i)
+  sub_grouped <- sub %>% group_by(Genotype_Age, OTU) %>% summarise(sum = sum(Abundance))
+  
+  if (sum(sub$Abundance) > 0.25) {
+    if (any(sub_grouped$sum == 0)) {
+      next
+    } else {
+      stat_variance <- sub %>%
+        rstatix::kruskal_test(Abundance ~ Genotype_Age)
+      # this code ha
+      stat_test <- sub %>%
+        pairwise_wilcox_test(Abundance ~ Genotype_Age,
+                             comparisons = genotype_age_comps,
+                             p.adjust.method = "BH") %>%
+        add_significance() %>%
+        add_xy_position(x = "Genotype_Age") %>% 
+        mutate(zotu = i)
+      
+      stat_tests <- bind_rows(stat_tests, stat_test) 
+    }
+    
+  }
+}
+```
+
+5 and 12wk 
+
+Key BONCAT zotus 
+
+```{r}
+# key_zotus <- c("Zotu23; LachnospiraceaeNK4A136group", "Zotu160; Desulfovibrio", "Zotu123; LachnospiraceaeNK4A136group", "Zotu49; LachnospiraceaeNK4A136group", "Zotu259; Parasutterella", "Zotu104; GOTU1392")
+```
+
+```{r, warning=FALSE}
+for (i in unique(boncat_rel$OTU)){
+  sub <- filter(boncat_rel, OTU == i & Age != "20wk")
+  
+  
+  plot <- ggplot(
+    sub,
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Abundance,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(aes(shape=Phenotype), size = 1.5, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Relative abundance [%]") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk", "20wk"), ncol = 3) +
+     theme_classic2() +
+     ggtitle(i) +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+    stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.format", hide.ns = T, step.increase = 0.05)
+   print(plot)
+  #ggsave(paste(i, "_5_12_boxplot.pdf"), dpi = 300, height = 5, width = 6)
+}
+
+```
+
+
+
+```{r}
+for (i in unique(boncat_rel$OTU)){
+  sub <- filter(boncat_rel, OTU == i, Age != "20wk")
+  
+  
+  plot <- ggplot(
+    sub,
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Abundance,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(aes(shape=Phenotype), size = 1.5, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Relative abundance [%]") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk"), ncol = 3) +
+     theme_classic2() +
+     ggtitle(i) +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+    stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.format", hide.ns = T, step.increase = 0.05)
+   print(plot)
+  ggsave(paste(i, "_5_12_boxplot.pdf"), dpi = 300, height = 4, width = 6)
+}
+
+```
+20wk 
+
+```{r}
+for (i in unique(boncat_rel$OTU)){
+  sub <- filter(boncat_rel, OTU == i, Age == "20wk")
+  
+  
+  plot <- ggplot(
+    sub,
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Abundance,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(aes(shape=Phenotype), size = 1.5, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Relative abundance [%]") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   #facet_wrap(Age, ncol = 3) +
+     theme_classic2() +
+     ggtitle(i) +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+    stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+   print(plot)
+  ggsave(paste(i, "_20_boxplot.pdf"), dpi = 300, height = 3.5, width = 4)
+}
+```
+How many zotus are detected/show the same assocations as BONCAT?
+
+```{r}
+
+```
+
+
+Do any of these OTUs correlate with tumor number?
+
+```{r}
+for (i in unique(boncat_clr$OTU)) {
+  plot_cor(filter(boncat_clr, Genotype == "tg/tg" & Age == "12wk"), x = "Tumor_No", xlab = "Tumor Number", y = i, color = "Genotype")
+  filename <- gsub(":", "_", i)
+  #ggsave(paste0("plots/", filename, "tumor_cor.pdf"), device = "pdf", dpi=300, height = 4, width = 6.5)
+}
+```
+
+#### PICRUSt2 analysis - mucosal
+
+```{r}
+load("../data/tissue/PICRUSt2/mucosal_picrust.RData")
+```
+
+All that's needed from mucosal is volcano plot
+
+Clean up this code before running
+```{r}
+wk5_tgtg_samples <- metadata %>% 
+  filter(Age == "5wk" & Genotype == "tg/tg") %>% 
+  pull(`#SampleID`)
+wk12_tgtg_samples <- metadata %>% 
+  filter(Age == "12wk" & Genotype == "tg/tg") %>% 
+  pull(`#SampleID`)
+
+tg_tg_samples <- c(wk5_tgtg_samples, wk12_tgtg_samples)
+ec_tgtg <- ec %>% 
+  select(all_of(tg_tg_samples))
+
+ec_filt_tgtg <- ec_tgtg %>% 
+  normalize(method = "relative") %>% 
+  filter_prev_abund(abund = 1e-4, prev=0.25)
+
+meta_tgtg <- metadata %>% 
+  filter(`#SampleID` %in% tg_tg_samples)
+```
+
+```{r}
+da_ec_tgtg <- fc(seqtab = as.matrix(ec_filt_tgtg), meta = meta_tgtg, feat_type = "functional",
+    var="Age", case="12wk", ctrl="5wk") 
+plot_volcano(da_ec_tgtg) + ylim(0, 5)
+sig_ec_tgtg <- da_ec_tgtg$res %>% 
+  filter(p.adj < 0.05) %>% 
+  filter(abs(log2FC) > 0.58) %>% 
+  rownames_to_column()
+```
+
+```{r}
+py_tgtg <- py %>% 
+  select(all_of(tg_tg_samples))
+py_filt_tgtg <- py_tgtg %>% 
+  normalize(method = "relative") %>% 
+ filter_prev_abund(abund = 1e-4, prev = 0.33) %>% 
+  rownames_to_column() %>% 
+  column_to_rownames("rowname")
+```
+
+```{r}
+da_py_tgtg <- gfc(seqtab = as.matrix(py_filt_tgtg), meta = meta_tgtg, feat_type = "functional",
+    var="Age", case="12wk", ctrl="5wk") 
+plot_volcano(da_py_tgtg, p_thresh = 0.05, FC_thresh = 0.58, ylim=c(0,1.5))
+sig_py_tgtg <- da_py_tgtg$res %>% 
+  filter(p.adj < 0.05) %>% 
+  filter(abs(log2FC) > 0.58)
+```
+### Fatty acid  PWY highlight
+
+```{r}
+#write.csv(da_py_tgtg$res, "sig_py_av_pd.csv")
+```
+
+```{r}
+pd_fa_df <- read_csv("sig_py_av_pd.csv") %>% 
+  column_to_rownames("...1")
+
+keyvals <- ifelse(
+    pd_fa_df$FA_metabolism == "FA", '#FCAB64', "#CACECD")
+names(keyvals)[keyvals == '#FCAB64'] <- 'FA'
+names(keyvals)[keyvals == '#CACECD'] <- 'Other'
+```
+
+```{r}
+EnhancedVolcano(pd_fa_df, lab = NA, x = "log2FC", y="p.adj", 
+                colCustom = keyvals,colAlpha = 1,ylim=c(0, 1.5), xlim = c(-2.5, 2.5), 
+                pCutoff = 0.1, FCcutoff = 0.32, pointSize = 4)
+ggsave("AV_FA_volcano.pdf", device = "pdf", width = 7, height = 8.5, dpi = 300)
+```
+
+### Luminal data analysis 
+
+* simple alpha and beta-div
+* Mean GUnifrac dissimilarity 
+* correlations between shannon effective and GRP78 expression and tumor number 
+* Differential abundance timepoints
+* Passenger-driver heatmap 
+
+Also good to repeat BONCAT stuff with luminal data as well 
+```{r}
+ps_luminal <- import_as_pseq("../data/zOTUs tables combined AR AS/Analysis_536/ZOTUs-Table_AV.tab",
+                             # adjust mapping file manually
+                     "../data/luminal/mapping_file.tab",
+                     "../data/zOTUs tables combined AR AS/Analysis_536/ZOTUs-Tree-nj.tre"
+                     ) %>% 
+  format_taxonomy()
+```
+
+
+Remove ASVs from BONCAT data not present in mucosal 
+
+```{r}
+# 1.8% = 1 sample 1 / 54
+ps_luminal <- filter_ps(ps_luminal, prev=0.018, abund = 0) %>% 
+  transform("mss")
+```
+
+#### 5wk alpha-diversity luminal
+Key question is impact of ATF6 on microbiota  
+
+```{r}
+alpha_div_luminal <- Rhea.Alpha_Diversity(ps_luminal)
+faiths.pd_luminal <- pd(ps_to_asvtab(ps_luminal) %>%
+    t(), phy_tree(ps_luminal), include.root = F)
+# this isn't the best way to do this but it works for now
+alpha_div_luminal$Faiths.PD <- faiths.pd_luminal$PD
+```
+
+5wk - genotype 
+```{r}
+map(metrics, function(x) plot_boxplot(filter(alpha_div_luminal, Age == "5wk"), variable_col = "Genotype", cols=pal,
+                                      value_col = x, group.order = c("fl/fl", "tg/wt", "tg/tg"), multiple_groups = T, 
+                                      comparisons_list = list(c("fl/fl", "tg/wt"), c("fl/fl", "tg/tg"), c("tg/wt", "tg/tg"))
+                                      )
+    )
+
+```
+
+5wk - correlation with GRP78
+
+```{r, fig.height=4, fig.width=4.5}
+ggscatter(filter(alpha_div_luminal, Age == "5wk" & Genotype != "fl/fl"), x="Shannon.Effective", y="GRP78_expression", add = "reg.line", 
+          add.params = list(fill = "lightgray"), ylab = "Expression (2–∆∆Ct)",
+          conf.int = TRUE, size = 3) +
+  geom_point(aes(color=Genotype), size=3) +
+  stat_cor(label.x = 140, method = "spearman") +
+  scale_y_continuous(limits = c(0, 30)) +
+  scale_x_continuous(expand=c(0,0), limits = c(90, 190)) + 
+  theme_cowplot() + 
+  theme(axis.title = element_text(size=16),
+        axis.text = element_text(size=14), 
+        legend.position = "None") + 
+  scale_color_manual(values = c("tg/wt" = "#445975", "tg/tg" = "#ED1C24"))
+```
+
+#### 5wk beta-diversity
+
+```{r}
+beta_div_5wk_luminal <- Rhea.Beta_Diversity(subset_samples(ps_luminal, Age == "5wk"), group_name = "Genotype")
+```
+
+```{r}
+beta_div_luminal <- Rhea.Beta_Diversity(ps_luminal, group_name = "Genotype")
+```
+
+Mean GUniFrac distance - 5 and 12 week
+
+```{r}
+flfl_samples_5 <- subset_samples(ps_luminal, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "fl/fl") %>% rownames()
+tgwt_samples_5 <- subset_samples(ps_luminal, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "tg/wt") %>% rownames()
+tgtg_samples_5 <- subset_samples(ps_luminal, Age == "5wk") %>% meta_to_df() %>% filter(Genotype == "tg/tg") %>% rownames()
+
+flfl_samples_12 <- subset_samples(ps_luminal, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "fl/fl") %>% rownames()
+tgwt_samples_12 <- subset_samples(ps_luminal, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "tg/wt") %>% rownames()
+tgtg_samples_12 <- subset_samples(ps_luminal, Age == "12wk") %>% meta_to_df() %>% filter(Genotype == "tg/tg") %>% rownames()
+```
+
+
+```{r}
+tgtg_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_luminal), tgtg_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+tgwt_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_luminal), tgwt_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+flfl_vs_flfl_5 <- simul_col_row_filt(as.data.frame(beta_div_luminal), flfl_samples_5, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_5, filt = "rows")
+
+tgtg_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_luminal), tgtg_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+tgwt_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_luminal), tgwt_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+flfl_vs_flfl_12 <- simul_col_row_filt(as.data.frame(beta_div_luminal), flfl_samples_12, filt = "columns") %>% 
+  simul_col_row_filt(flfl_samples_12, filt = "rows")
+```
+
+```{r}
+gunifrac_tgtg_5 <- simul_col_row_filt(tgtg_vs_flfl_5, tgtg_samples_5, filt="columns")
+colmeans_tgtg_5 <- colMeans(gunifrac_tgtg_5) %>% 
+  as.data.frame() 
+colnames(colmeans_tgtg_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_tgtg_12 <- simul_col_row_filt(tgtg_vs_flfl_12, tgtg_samples_12, filt="columns")
+colmeans_tgtg_12 <- colMeans(gunifrac_tgtg_12) %>% 
+  as.data.frame() 
+colnames(colmeans_tgtg_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+gunifrac_tgwt_5 <- simul_col_row_filt(tgwt_vs_flfl_5, tgwt_samples_5, filt="columns")
+colmeans_tgwt_5 <- colMeans(gunifrac_tgwt_5) %>% 
+  as.data.frame() 
+colnames(colmeans_tgwt_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_tgwt_12 <- simul_col_row_filt(tgwt_vs_flfl_12, tgwt_samples_12, filt="columns")
+colmeans_tgwt_12 <- colMeans(gunifrac_tgwt_12) %>% 
+  as.data.frame() 
+colnames(colmeans_tgwt_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+gunifrac_flfl_5 <- simul_col_row_filt(flfl_vs_flfl_5, flfl_samples_5, filt="columns")
+colmeans_flfl_5 <- colMeans(gunifrac_flfl_5) %>% 
+  as.data.frame() 
+colnames(colmeans_flfl_5) <- c("Mean_Gunifrac_Dist")
+
+gunifrac_flfl_12 <- simul_col_row_filt(flfl_vs_flfl_12, flfl_samples_12, filt="columns")
+colmeans_flfl_12 <- colMeans(gunifrac_flfl_12) %>% 
+  as.data.frame() 
+colnames(colmeans_flfl_12) <- c("Mean_Gunifrac_Dist")
+```
+
+```{r}
+wk5_samples <- meta_to_df(ps_luminal) %>% filter(Age == "5wk") %>% rownames()
+wk12_samples <- meta_to_df(ps_luminal) %>% filter(Age == "12wk") %>% rownames()
+wk20_samples <- meta_to_df(ps_luminal) %>% filter(Age == "20wk") %>% rownames()
+```
+
+
+```{r}
+colmeans <- bind_rows(colmeans_tgtg_5,colmeans_tgwt_5, colmeans_flfl_5,
+                      colmeans_tgtg_12,colmeans_tgwt_12, colmeans_flfl_12)
+colmeans <- colmeans %>%
+  rownames_to_column("SampleID") %>% 
+  mutate(Genotype = case_when(SampleID %in% c(flfl_samples_12, flfl_samples_5) ~ "fl/fl",
+                              SampleID %in% c(tgwt_samples_12, tgwt_samples_5) ~ "tg/wt",
+                              SampleID %in% c(tgtg_samples_12, tgtg_samples_5) ~ "tg/tg",
+                              TRUE ~ "other")) %>% 
+  mutate(Age = case_when(SampleID %in% wk5_samples ~ "5wk",
+                         SampleID %in% wk12_samples ~ "12wk",
+                         SampleID %in% wk20_samples ~ "20wk",
+                         TRUE ~ "other"))
+```
+
+
+Mean Gunifrac dist plot 
+
+final plot
+
+```{r}
+
+ggboxplot(colmeans, x="Genotype", y = "Mean_Gunifrac_Dist", order = c("fl/fl", "tg/wt", "tg/tg"), fill="Genotype", palette = pal, ylab = "Mean GUniFrac Distance\nrelative to control", xlab = "") + 
+  geom_point(aes(color=Genotype), size = 1.5, position = position_jitterdodge()) + 
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) + 
+  facet_wrap(vars(fct_relevel(Age, "5wk", "12wk"))) + 
+  scale_y_continuous(limits = c(0.2, 0.65), breaks = seq(0.3, 0.6, by=0.1)) +
+  theme(legend.position = "None") +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.format", hide.ns = T, step.increase = 0.05)
+
+ggsave("figures-manuscript/Mean_gu_dist_5_12wk_luminal.pdf", device = "pdf", dpi=300, height = 5, width = 7)
+```
+
+Correlation between Mean GUnifrac distance and GRP78 expression
+
+```{r}
+meta_5wk <- meta_to_df(subset_samples(ps_luminal, Age == "5wk")) 
+colmeans_5wk <- colmeans_5wk %>%
+  column_to_rownames("SampleID") %>%
+  merge(., meta_5wk[c("GRP78_expression")], by=0)
+```
+
+
+```{r}
+ggscatter(colmeans_5wk, x="Mean_Gunifrac_Dist", y="GRP78_expression", add = "reg.line", 
+          add.params = list(fill = "lightgray"), ylab = "Expression (2–∆∆Ct)",
+          conf.int = TRUE, size = 3) +
+  geom_point(aes(color=Genotype), size=3) +
+  stat_cor(label.x = 0.25, method = "spearman") +
+  scale_y_continuous(limits = c(0, 30)) +
+  scale_x_continuous(expand=c(0,0), limits = c(0.21,0.27)) + 
+  theme_cowplot() + 
+  theme(axis.title = element_text(size=16),
+        axis.text = element_text(size=14), 
+        legend.position = "None") + 
+  scale_color_manual(values = c("tg/wt" = "#445975", "tg/tg" = "#ED1C24"))
+```
+
+#### 12wk alpha-diversity
+12wk- genotype
+
+```{r}
+
+map(metrics, function(x) plot_boxplot(filter(alpha_div_luminal, Age == "12wk"), variable_col = "Genotype", cols=pal,
+                                      value_col = x, group.order = c("fl/fl", "tg/wt", "tg/tg"), multiple_groups = T, 
+                                      comparisons_list = list(c("fl/fl", "tg/wt"), c("fl/fl", "tg/tg"), c("tg/wt", "tg/tg"))
+                                      )
+    )
+
+```
+
+#### 12wk beta-diversity
+
+```{r}
+beta_div_12wk <- Rhea.Beta_Diversity(subset_samples(ps_luminal, Age == "12wk"), group_name = "Genotype")
+```
+#### Alpha and beta-diversity comparison all ages and genotypes 
+
+Alpha-diversity between genotypes, with shape encoding Tissue and faceting by age 
+```{r}
+alpha_div_luminal %>%  
+  ggplot(
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Richness,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(size = 1.5,, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Richness") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk", "20wk"), ncol = 3) +
+     theme_classic2() +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+ggsave("richness_age_genotype_luminal.pdf", dpi = 300, height = 5, width = 7)
+```
+
+```{r}
+alpha_div_luminal %>%  
+  ggplot(
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Shannon.Effective,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(size = 1.5,, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Shannon Effective") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk", "20wk"), ncol = 3) +
+     theme_classic2() +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+  stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+ggsave("shannon_effective_age_genotype_luminal.pdf", dpi = 300, height = 5, width = 7)
+```
+
+
+Beta-diversity
+
+```{r}
+pdf("genotype_age_pairwise-beta-diversity-NMDS.pdf")
+beta_div_all <- Rhea.Beta_Diversity(ps_luminal, group_name = "Genotype_Age")
+dev.off()
+```
+
+
+#### Differential abundance 
+
+##### LEfSe
+
+5wk to 12wk tg/tg
+
+What changes with the tumor?
+```{r}
+ps_5_12_tg <- subset_samples(ps_luminal, Genotype == "tg/tg" & Age != "20wk") %>%
+  filter_ps()
+tgtg_5_12_res <- run_lefser(ps_5_12_tg, group_col = "Age", lda.threshold = 3)
+lefserPlot(tgtg_5_12_res) + 
+  scale_fill_manual(values = c("5wk" = "#183A37" , "12wk" = "#ED1C24"))
+ggsave("tgtg_5_12_lefse_luminal.pdf", device = "pdf", dpi=300, width = 8, height = 6)
+```
+5wk to 12wk tg/wt
+
+What changes with prolonged ATF6 expression ?
+```{r}
+ps_5_12_tgwt <- subset_samples(ps, Genotype == "tg/wt" & Age != "20wk") %>%
+  filter_ps()
+tgwt_5_12_res <- run_lefser(ps_5_12_tgwt, group_col = "Age", lda.threshold = 3)
+lefserPlot(tgwt_5_12_res)
+```
+5wk to 12wk fl/fl
+
+```{r}
+ps_5_12_fl <- subset_samples(ps_luminal, Genotype == "fl/fl" & Age != "20wk") %>%
+  filter_ps()
+flfl_5_12_res <- run_lefser(ps_5_12_fl, group_col = "Age", lda.threshold = 3)
+lefserPlot(flfl_5_12_res)
+```
+
+##### Heatmap of taxa that change between 5wk and 12wk
+
+```{r}
+ps_hmap <- subset_samples(ps_luminal, Genotype != "tg/wt" & Age != "20wk") 
+taxa_plot <- tgtg_5_12_res$Names
+```
+
+```{r}
+ord <- c(meta_to_df(ps_luminal) %>% filter(Genotype == "fl/fl" & Age == "5wk") %>% rownames(),
+         meta_to_df(ps_luminal) %>% filter(Genotype == "fl/fl" & Age == "12wk") %>% rownames(),
+           meta_to_df(ps_luminal) %>% filter(Genotype == "tg/tg" & Age == "5wk") %>% rownames(),
+         meta_to_df(ps_luminal) %>% filter(Genotype == "tg/tg" & Age == "12wk") %>% rownames())
+```
+
+```{r}
+var_cols <- list("5wk_fl/fl" = "#BBBDC0", "12wk_fl/fl" = "#ED1C24", 
+                 "5wk_tg/tg" = "#BBBDC0", "12wk_tg/tg" = "#ED1C24")
+cols <- rev(brewer.pal(9, "RdBu"))
+
+p <- plot_heatmap(ps_hmap, taxa_plot, heatmap.colors = cols, variable = "Age_Genotype", 
+                  variable.colors = var_cols, ord = T, col_ord = ord)
+p
+```
+Subtracting those that change with age (in fl/fl)
+
+```{r}
+# all elements of a) not in b)
+tgtg_specific <- setdiff(tgtg_5_12_res$Names, flfl_5_12_res$Names)
+
+p <- plot_heatmap(ps_hmap, tgtg_specific, heatmap.colors = cols, variable = "Age_Genotype", 
+                  variable.colors = var_cols, ord = T, col_ord = ord)
+p
+```
+
+
+```{r}
+p_out <- as.ggplot(grid.grabExpr(draw(p)))
+ggsave("av_pd_luminal.pdf",p_out, device = "pdf", dpi=300, width = 12, height = 6)
+```
+
+##### ATF6 DA 5wk 
+
+```{r}
+ps_5 <- subset_samples(ps_luminal, Age == "5wk" & Genotype != "fl/fl") %>%
+  filter_ps()
+atf6_5 <- run_lefser(ps_5, group_col = "Genotype", lda.threshold = 3)
+lefserPlot(atf6_5) + 
+  scale_fill_manual(values = pal)
+ggsave("5wk_tgwt_tgtg_lefse_luminal.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+
+##### Genotype DA 5wk 
+```{r}
+ps_5_homo <- subset_samples(ps_luminal, Age == "5wk" & Genotype != "tg/wt") %>%
+  filter_ps()
+flfltgtg_5 <- run_lefser(ps_5_homo, group_col = "Genotype", lda.threshold = 3)
+lefserPlot(flfltgtg_5, label.font.size = 4) + 
+  scale_fill_manual(values = pal)
+ggsave("figures-manuscript/5wk_flfl_tgtg_lefse_luminal.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+
+##### Tumor DA 12wk
+```{r}
+ps_tumor_12 <- subset_samples(ps_luminal, Genotype != "tg/wt" & Age == "12wk") %>%
+  filter_ps()
+tumor_12 <- run_lefser(ps_tumor_12, group_col = "Phenotype", lda.threshold = 3)
+lefserPlot(tumor_12) + 
+  scale_fill_manual(values = c("NT" = "#BBBDC0" , "T" = "#ED1C24"))
+ggsave("12wk_tumor_lefse_luminal.pdf", device = "pdf", dpi=300, width = 8, height = 6.5)
+```
+
+##### Tumor DA 20wk
+```{r}
+ps_tumor_20 <- subset_samples(ps_luminal, Genotype != "tg/wt" & Age == "20wk") %>%
+  filter_ps()
+tumor_20 <- run_lefser(ps_tumor_20, group_col = "Phenotype", lda.threshold = 3)
+lefserPlot(tumor_20) + 
+  scale_fill_manual(values = c("NT" = "#BBBDC0" , "T" = "#ED1C24"))
+ggsave("20wk_tumor_lefse_luminal.pdf", device = "pdf", dpi=300, width = 8.5, height = 8)
+```
+
+#### Correlation between taxa and ATF6 / GRP78 expression
+
+```{r}
+atf6_cor_5 <- ps_5_12_tg %>% 
+  microbiome::transform("clr") %>% 
+  psmelt() %>%
+  filter(Age == "5wk") %>%
+  group_by(OTU) %>% 
+  cor_test(Abundance, ATF6_expression, method = "spearman") %>% 
+  adjust_pvalue(method = "BH")
+
+grp78_cor_5 <- ps_5_12_tg %>% 
+  microbiome::transform("clr") %>% 
+  psmelt() %>%
+  filter(Age == "5wk") %>%
+  group_by(OTU) %>% 
+  cor_test(Abundance, GRP78_expression, method = "spearman") %>% 
+  adjust_pvalue(method = "BH")
+```
+
+
+#### Correlation between Alpha-diversity and tumor number - 12wk
+
+```{r}
+alpha_div_tumor <- alpha_div_luminal %>% filter(Phenotype == "T")
+#plot_cor(alpha_div_tumor, x = "Tumor_No", xlab = "Tumor Number", y =, color = "Genotype")
+
+alpha_div_tumor %>%
+    ggscatter(
+      x = "Tumor_No",
+      y = "Shannon.Effective",
+      size = 4,
+      title = "",
+      add="reg.line",
+      conf.int = T, 
+      color ="Genotype",
+      xlab = "Tumor number",
+      ylab = paste0("Shannon Effective")
+    ) +
+    stat_cor(method = "spearman") +
+    scale_color_manual(values = pal) +
+    scale_fill_manual(values = pal) +
+    theme_cowplot(font_size = 15) +
+    scale_y_continuous(limits = c(40, 180), breaks = c(seq(60, 180, by=30))) +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position ="None")
+ggsave("shannon_effective_tumor_cor_luminal.pdf", device = "pdf", dpi=300, height = 4, width = 5.5)
+```
+
+
+#### Overlap between mouse data and BONCAT
+
+```{r}
+boncat_clr_luminal <- ps_luminal %>% 
+  microbiome::transform("clr") %>% 
+  speedyseq::psmelt()%>% 
+  filter(ASV %in% all_lcfa_zotus)
+
+boncat_rel_luminal <- ps_luminal %>% 
+  microbiome::transform("compositional") %>% 
+  speedyseq::psmelt() %>% 
+  filter(ASV %in% all_lcfa_zotus) %>% 
+  mutate(Abundance = Abundance * 100)
+```
+
+
+Facet by age with statistical comparison only at each timepoint  
+
+5- 12 
+20wk for supplementary
+
+5 and 12wk 
+
+```{r}
+for (i in unique(boncat_rel_luminal$OTU)){
+  sub <- filter(boncat_rel_luminal, OTU == i, Age != "20wk")
+  
+  
+  plot <- ggplot(
+    sub,
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Abundance,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(aes(shape=Phenotype), size = 1.5, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Relative abundance [%]") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   facet_wrap(~fct_relevel(Age, "5wk", "12wk"), ncol = 3) +
+     theme_classic2() +
+     ggtitle(i) +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+    stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.format", hide.ns = T, step.increase = 0.05)
+   print(plot)
+  ggsave(paste(i, "_5_12_boxplot_luminal.pdf"), dpi = 300, height = 4, width = 6)
+}
+
+```
+20wk 
+
+```{r}
+for (i in unique(boncat_rel_luminal$OTU)){
+  sub <- filter(boncat_rel_luminal, OTU == i, Age == "20wk")
+  
+  
+  plot <- ggplot(
+    sub,
+    aes(
+      x = forcats::fct_relevel(Genotype, "fl/fl", "tg/wt", "tg/tg"),
+      y = Abundance,
+      fill = Genotype,
+      color = Genotype
+    )
+  ) +
+    geom_boxplot(
+      color = "black",
+      alpha = 0.8,
+      outlier.shape = 5,
+      outlier.size = 1
+    ) +
+    geom_point(aes(shape=Phenotype), size = 1.5, position = position_jitterdodge()) +
+    labs(x = "Genotype", y = "Relative abundance [%]") +
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+   #facet_wrap(Age, ncol = 3) +
+     theme_classic2() +
+     ggtitle(i) +
+    theme(
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      axis.title.y = element_text(size = 18),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "None"
+    ) +
+     scale_fill_manual(values = pal) +
+     scale_color_manual(values = pal) +
+    rotate_x_text(angle = 45) +
+    stat_compare_means(comparisons = genotype_comps, method = "wilcox.test", label = "p.signif", hide.ns = T, step.increase = 0.05)
+   print(plot)
+  ggsave(paste(i, "_20_boxplot_luminal.pdf"), dpi = 300, height = 3.5, width = 4)
+}
+```
+
+### Luminal vs mucosal ML
+
+```{r}
+source("ML_utils.R")
+library(ranger)
+```
+
+```{r}
+set.seed(42)
+subsample <- sample(rownames(sample_data(ps)), 
+                     size = length(rownames(sample_data(ps_luminal))))
+ps_subsample <- prune_samples(subsample, ps)
+```
+
+```{r}
+# load into siamcat, 
+ml_datasets <- list(
+  luminal = ps_luminal,
+  mucosal = ps_subsample
+)
+ml_models <- c("randomForest", "ridge", "lasso", "enet", "lasso_ll")
+```
+
+load data, filter, normalize and create splits then train models 
+
+```{r}
+# create SC objects, filter and normalize
+ml_datasets <- map(ml_datasets, function(x) sc.object(ps = x, label = "Phenotype", case = "T") %>% 
+                     sc.preprocess(abund =  0.01, prev = 0.05))
+```
+
+
+```{r}
+cl <- makeCluster(6)
+registerDoParallel(cl)
+
+results_luminal <- list()
+
+# Parallelized loop using foreach
+results_luminal <- foreach(i = 1:length(ml_models), .verbose = T, .packages=c("dplyr","ranger","SIAMCAT")) %dopar% {
+  ml_datasets$luminal %>%
+    sc.train(folds = 5, resample = 5, model = ml_models[[i]])
+}
+
+results_mucosal <- list()
+
+# Parallelized loop using foreach
+results_mucosal <- foreach(i = 1:length(ml_models), .verbose = T, .packages=c("dplyr","ranger","SIAMCAT")) %dopar% {
+ ml_datasets$mucosal %>%
+    sc.train(folds = 5, resample = 5, model =  ml_models[[i]])
+}
+
+# Clean up parallel backend
+stopCluster(cl)
+```
+ 
+Make and evaluate predictions
+```{r}
+results_luminal <- map(results_luminal, function(x) sc.test(x))
+results_mucosal <- map(results_mucosal, function(x) sc.test(x))
+names(results_luminal) <- ml_models
+names(results_mucosal) <- ml_models
+```
+
+ROC and PR-curves
+
+```{r}
+# Luminal 
+model.evaluation.plot(
+  "RF" = results_luminal$randomForest,
+  "R" = results_luminal$ridge,
+  "L" = results_luminal$lasso,
+  "E" = results_luminal$enet,
+  "LL" = results_luminal$lasso_ll,
+  colours = c('#686A6C', '#EE332E', '#2356A7', "#6AB547", "#FCBF49"),
+  fn.plot = "figures-manuscript/luminal_roc_pr.pdf"
+)
+
+
+# Mucosal
+model.evaluation.plot(
+  "RF" = results_mucosal$randomForest,
+  "R" = results_mucosal$ridge,
+  "L" = results_mucosal$lasso,
+  "E" = results_mucosal$enet,
+  "LL" = results_mucosal$lasso_ll,
+  colours = c('#686A6C', '#EE332E', '#2356A7', "#6AB547", "#FCBF49"),
+  fn.plot = "figures-manuscript/mucosal_roc_pr.pdf"
+)
+```
+
+
+Extract metrics and plot 
+
+```{r}
+metrics_luminal <- imap(results_luminal, \(x, y) sc.metrics(x, metric = "both") %>% as.data.frame %>% mutate(model = y) %>% 
+                          mutate(dataset = "luminal")) %>% 
+  bind_rows()
+metrics_mucosal <- imap(results_mucosal, \(x, y) sc.metrics(x, metric = "both") %>% as.data.frame %>% mutate(model = y) %>% 
+                          mutate(dataset = "mucosal")) %>% 
+  bind_rows()
+
+metrics_all <- bind_rows(metrics_luminal, metrics_mucosal) %>% 
+  mutate(Model_dataset = paste0(model, "_", dataset))
+```
+
+
+
+```{r}
+stat_variance <- metrics_all %>%
+  rstatix::kruskal_test(AUCROC ~ Model_dataset)
+stat_test <- metrics_all %>%
+  group_by(model) %>%
+  pairwise_wilcox_test(data=., AUCROC ~ dataset, p.adjust.method = "BH") %>%
+  add_significance() %>%
+  add_xy_position(x = "model") %>%
+  filter(p.adj < 0.05)
+```
+
+
+```{r}
+colors = c("#2a9D8f", "darkorange1")
+ggboxplot(metrics_all, x="model", y="AUCROC", color="dataset",
+          xlab="Model", bxp.errorbar = T, bxp.errorbar.width = 0.2,
+          add = "jitter",add.params = list(size = 2, alpha = 0.6)) +
+  scale_color_manual(values=colors) +
+  stat_pvalue_manual(stat_test, label = "p.adj.signif", hide.ns = T,
+                    step.increase = NULL, inherit.aes = FALSE, bracket.nudge.y = 0.04)
+ggsave("AUCROC_comparison.pdf", dpi=300, device = "pdf", height = 5, width = 6)
+```
+
+## Spatial 
+
+```{r}
+
+```
+
+
+## Luminal metabolomics 
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(ggsci)
+```
+
+```{r}
+load("../data/metabolomics/cecal_faecal/ProcessedMetabolome.RData")
+source("../scripts/Normalisation.R")
+source("../scripts/plsda_utils.R")
+source("../scripts/pca_utils.R")
+source("../scripts/auxillary_funcs.R")
+source("../scripts/full_voclano_plots.R")
+```
+
+```{r}
+scatter_theme <- theme(
+  axis.title=element_text(size=26),
+  axis.text=element_text(size=22),
+  legend.title=element_text(size=26),
+  legend.text=element_text(size=22)
+)
+
+```
+### PCA and Volcano plots
+
+filter so only AV
+
+```{r}
+av_samples <- sample.info %>% 
+  filter(Sample_Type == "caecal")%>% 
+  filter(Mouse_Line == "AV") %>% 
+  rownames()
+cc.av <- cc.log.normed[, av_samples]
+```
+
+```{r}
+av_pca <- prcomp(t(cc.scaled[, av_samples]))
+av_ve <- av_pca$sdev^2/sum(av_pca$sdev^2)
+```
+
+```{r}
+pal2 <- pal[c(1,3)]
+names(pal2) <- c("NT", "T")
+as.data.frame(av_pca$x) %>%
+  add_column(Sample=rownames(av_pca$x)) %>%
+  add_column(Genotype=sample.info[rownames(av_pca$x), "Genotype"]) %>%
+  add_column(Phenotype=sample.info[rownames(av_pca$x), "Phenotype"]) %>%
+  add_column(Age=sample.info[rownames(av_pca$x), "Age"]) %>%
+  mutate(Age =  Age %>% fct_relevel("5wk")) %>% 
+  ggplot(aes(x=PC1, y=PC2, colour=Phenotype, shape=Genotype)) +
+  geom_point(size=6) +
+  theme_pubr() +
+  scatter_theme +
+  scale_colour_manual(values = pal2) +
+  facet_wrap("Age") +
+  xlab(paste0("PC", 1, " (", round(av_ve[1], 3)*100, "%)")) +
+  ylab(paste0("PC", 2, " (", round(av_ve[2], 3)*100, "%)"))
+ggsave(filename="figures-manuscript/metabolomics_PCA_all.pdf",width=12, height=9)
+```
+Volcano plot T vs NT
+
+### Phenotype {.tabset .tabset-pills}
+```{r}
+total_samples <- c(colnames(fc.scaled), colnames(cc.scaled))
+phenotype <- sample.info[total_samples,"Phenotype"]
+names(phenotype) <- total_samples
+
+fn <- metabolite.info$`Metabolite name`
+fn[fn == "Unknown"] <- NA
+names(fn) <- rownames(metabolite.info)
+
+cc_av_scaled <- cc.scaled[, av_samples]
+
+pheno_p <- get_padj(cc_av_scaled, phenotype[colnames(cc_av_scaled)],
+                      test.method=t.test, p.adjust.method="none")
+
+pheno_adj_p <- get_padj(cc_av_scaled, phenotype[colnames(cc_av_scaled)],
+                      test.method=t.test, p.adjust.method="BH")
+pheno_fc <- fold.change(data=cc.av,
+                      groups=phenotype[colnames(cc_av_scaled)])
+
+
+```
+
+#### All Features
+```{r}
+pheno_fc_plot <- pheno_fc$fold.changes * -1
+
+p <- plot_volcano_names(pheno_adj_p, pheno_fc_plot,
+                   fn, min.p=.01, max.overlaps=5)
+p
+
+#ggsave("volcano_av_caecal_t_nt_all.pdf", p, device = "pdf", height = 10, width = 12, dpi = 300)
+```
+Nice Volcano plot 
+
+```{r}
+fn_ord <- fn[names(pheno_fc_plot)]
+res_df <- data.frame(FC=(2^pheno_fc_plot), log2FoldChange=pheno_fc_plot, p=pheno_p, padj=pheno_adj_p, Metabolite=fn_ord[names(fn_ord) %in% names(pheno_fc_plot)])
+```
+
+```{r}
+prettyVolcano(res_df, downreg_col = pal[1], upreg_col = pal[3],   contrast = c("NT", "T"),
+  pval_thresh = 0.1,
+  gene_names = "Metabolite",
+  xlim=c(-5, 7.5),
+  ylim=c(0, 7),
+  pointSize = 3,
+  drawConnectors = F,
+  max.overlaps = 10)
+ggsave("figures-manuscript/volcano_luminal_metabolomics_0.1.pdf", device = "pdf", height = 10, width = 12, dpi = 300)
+```
+Output statistics for all Fatty acids 
+
+```{r}
+fa_strings <- c("FA", "fatty acid", "10-hydroxystearic acid")
+res_df_fa <- res_df %>% 
+  filter(grepl(paste(fa_strings, collapse = "|"), Metabolite)) 
+
+# remove FAHFA 
+res_df_fa <- res_df_fa %>% 
+  filter(!grepl("FAHFA", Metabolite)) %>% 
+  mutate(significant = case_when(padj <= 0.1 ~ "Significant",
+                  TRUE ~ "Nonsignificant"))
+
+write.csv(res_df_fa, "significant_FAs_mouse.csv")
+```
+### Fatty acid boxplots 
+
+filter so only tgtg and flfl
+
+```{r}
+tgtg_flfl_samples <- sample.info %>% 
+  filter(Sample_Type == "caecal")%>% 
+  filter(Mouse_Line == "AV") %>% 
+  filter(Genotype != "tg/wt") %>% 
+  rownames()
+cc.av.filt <- cc.log.normed[, tgtg_flfl_samples]
+```
+
+Filter to only those also significant in human CRC data
+```{r}
+fas <- c("FA", "fatty acid")
+human_sig_fas <- read_tsv("Human_CRC_sig_fas.txt") %>% 
+  pull(Metabolite)
+
+# make mouse metabolites unique
+res_df$Metabolite <- make.unique(res_df$Metabolite)
+
+mouse_sig_fas <- res_df %>% 
+  filter(padj < 0.1 & log2FoldChange > 0) %>% 
+  filter(grepl(paste(fas, collapse = "|"), Metabolite)) %>% 
+  filter(!grepl("FAHFA", Metabolite)) %>% 
+  pull(Metabolite)
+  
+
+print(sort(c(human_sig_fas, mouse_sig_fas)))
+```
+
+filter for those significant in both mice and humans
+
+```{r}
+# manually specify shared fas to solve duplicate name issue in mice data
+shared_fas <- c("C20 hydroxy fatty acid", "FA 20:3","FA 22:6","FA 22:5.2", "FA 22:4.1", "FA 24:6", "FA 24:5")
+# get ids for these fas
+shared_fas_ord <- shared_fas[res_df %>% filter(Metabolite %in% shared_fas) %>% pull(Metabolite)]
+shared_fa_ids <- rownames(res_df %>% filter(Metabolite %in% shared_fas))
+
+names(shared_fa_ids) <- shared_fas
+
+cc.av.filt.fa <- cc.av.filt[shared_fa_ids,]
+
+```
+
+
+```{r}
+sample.info.cc.av <- sample.info %>% 
+  filter(SampleID %in% tgtg_flfl_samples) 
+```
+
+
+Manually calculate pvals 
+```{r}
+wk5_av_p <- pairwise_ttest_metabo(cc.av.filt.fa, factor = "Age_Genotype", case="5wk_tg/tg", control = "5wk_fl/fl", 
+                      sample_col = "SampleID", meta = sample.info.cc.av) 
+wk12_av_p <- pairwise_ttest_metabo(cc.av.filt.fa, factor = "Age_Genotype", case="12wk_tg/tg", control = "12wk_fl/fl", 
+                      sample_col = "SampleID", meta = sample.info.cc.av)
+wk20_av_p <- pairwise_ttest_metabo(cc.av.filt.fa, factor = "Age_Genotype", case="20wk_tg/tg", control = "20wk_fl/fl", 
+                      sample_col = "SampleID", meta = sample.info.cc.av)
+```
+
+
+
+```{r}
+metabolite.info <- metabolite.info %>% 
+  rownames_to_column("Metabolite_id") %>% 
+  group_by(`Metabolite name`) %>%
+  mutate(`Metabolite name` = ifelse(row_number() == 1, `Metabolite name`, paste0(`Metabolite name`, "_", row_number() - 1))) %>%
+  ungroup() %>% 
+  column_to_rownames("Metabolite_id")
+
+fa_detected_df <- metabolite.info %>% 
+  filter_rownames(rownames(wk5_av_p)) 
+
+fa_detected <- fa_detected_df$`Metabolite name`
+names(fa_detected) <- rownames(fa_detected_df)
+
+# make sure order of fa detected is same as cc.av.filt.fa
+fa_detected <- fa_detected[rownames(cc.av.filt.fa)]
+```
+
+
+```{r}
+genotypes <- c("fl/fl", "tg/tg")
+av_plot_df <- cc.av.filt.fa %>%
+  as.data.frame() %>% 
+  rownames_to_column("id") %>% 
+  add_column(metabolite=fa_detected) %>%
+      pivot_longer(-c(id, metabolite), names_to="sample", values_to="logInt") %>%
+      add_column(age=sample.info.cc.av[.$sample, "Age"], genotype=sample.info.cc.av[.$sample, "Genotype"],
+                 ) %>%
+      mutate(age = age %>% fct_relevel("5wk")) %>% 
+      filter(genotype == genotypes[1] | genotype == genotypes[2]) %>%
+      mutate(metabolite=sapply(.$metabolite, function(x) str_remove(strsplit(x, "from")[[1]][1], "w/o MS2:"))) 
+```
+
+
+
+
+```{r}
+library(ggsignif)
+
+p1 <- av_plot_df %>%
+      ggplot(aes(x=metabolite, y=logInt, fill=genotype)) +
+  geom_boxplot(color="black", alpha=0.75) +
+  geom_point(aes(color=genotype), size = 1.5, position = position_jitterdodge(jitter.width = 0.25,
+                                                                              dodge.width = 1)) + 
+    labs(x="FA", y="LogInt") + 
+      theme_pubr() +
+      facet_wrap("age", ncol=1, scales="free_y") + 
+      scale_fill_manual(values=pal) +
+      scale_color_manual(values=pal) +
+      theme(axis.text.x=element_text(angle=45, hjust=1),
+            strip.text = element_text(size=22),
+            legend.title = element_blank()) +
+      scatter_theme 
+ 
+p1
+ggsave(plot = p1, "figures-manuscript/AV_human_mouse_sig_FAs.pdf", width=12,height=10, dpi = 300, device = "pdf")
+```
+```{r}
+sig_fas_boxplot <- bind_rows(wk5_av_p %>% mutate(week = "5wk") %>% rownames_to_column("id"), wk12_av_p %>% mutate(week = "12wk")  %>% rownames_to_column("id"), wk20_av_p %>% mutate(week = "20wk")  %>% rownames_to_column("id"))
+
+sig_fas_boxplot$Metabolite <- sapply(sig_fas_boxplot$id, function(x) names(shared_fa_ids)[match(x, shared_fa_ids)])
+
+write.csv(sig_fas_boxplot, file = "pvals_boxplot_FAs.csv")
+```
+
+supplementary - significant in pairwise analysis 
+
+```{r}
+av_plot_df <- av_plot_df %>% 
+  mutate(age_genotype = paste(age, genotype, sep="_")) 
+comps <- microbiomeutilities::make_pairs(av_plot_df$age_genotype)
+p2 <- av_plot_df %>%
+      filter(!id %in% rownames(metabolite_info_filt)) %>%
+  filter(id %in% rownames(fa_sig_df)) %>%
+      ggplot(aes(x=metabolite, y=logInt)) +
+  geom_boxplot(aes(fill=genotype), color="black", alpha=0.75) +
+  geom_point(aes(color=genotype), size = 1.5, position = position_jitterdodge(jitter.width = 0.25,
+                                                                              dodge.width = 1)) + 
+    labs(x="FA", y="LogInt") + 
+      theme_pubr() +
+      facet_wrap("age", ncol=1, scales="free_y") + 
+      scale_fill_manual(values=pal) +
+      scale_color_manual(values=pal) +
+      theme(axis.text.x=element_text(angle=45, hjust=1),
+            strip.text = element_text(size=22)) +
+      scatter_theme 
+p2
+ggsave(plot = p2, "AV_pairwise_sig_FAs.pdf", width=24,height=10, dpi = 300, device = "pdf")
+```
+## Data integration - mixOmics DIABLO & correlation
+
+```{r}
+load("../data/metabolomics/cecal_faecal/ProcessedMetabolome.RData")
+```
+
+Data preparation 
+```{r}
+ps_clr <- transform(ps, "clr") %>% 
+  # clr transform and remove tumor-adjacent since these samples are not paired
+  subset_samples(Tissue != "Tumor_adjacent")
+# clr transform luminal data
+ps_luminal_clr <- transform(ps_luminal, "clr")
+
+mucosal_clr <- ps_to_asvtab(ps_clr)
+luminal_clr <- ps_to_asvtab(ps_luminal_clr)
+```
+
+```{r}
+sample.info.av.luminal <- sample.info %>% 
+  filter(Mouse_Line == "AV") %>% 
+  filter(Sample_Type == "caecal")
+luminal_metabolomics <- cc.log.normed[, rownames(sample.info.av.luminal)]
+```
+
+taxonomy tables for downstream analysis
+```{r}
+taxonomy_mucosal <- taxonomy(ps)
+taxonomy_luminal <- taxonomy(ps_luminal)
+```
+
+
+```{r}
+# fix column names to match metabolomic data e.g. CC_AV521
+colnames(mucosal_clr) <- gsub("T", "", colnames(mucosal_clr))
+colnames(mucosal_clr) <- gsub("^[^-]+-", "CC_", colnames(mucosal_clr))
+colnames(mucosal_clr) <- gsub("\\.2", "", colnames(mucosal_clr))
+
+colnames(luminal_clr) <- gsub("^[^-]+-", "CC_", colnames(luminal_clr))
+colnames(luminal_clr) <- gsub("\\.2", "", colnames(luminal_clr))
+
+# remove samples not present in metabolomics
+colnames(mucosal_clr)[!colnames(mucosal_clr) %in% colnames(luminal_metabolomics)]
+colnames(luminal_clr)[!colnames(luminal_clr) %in% colnames(luminal_metabolomics)]
+# remove CC_AV551 and CC_AV568
+rem <- c("CC_AV551", "CC_AV568")
+mucosal_clr <- mucosal_clr[, !colnames(mucosal_clr) %in% rem]
+luminal_clr <- luminal_clr[, !colnames(luminal_clr) %in% rem]
+# check names now match 
+all(colnames(mucosal_clr) %in% colnames(luminal_metabolomics))
+all(colnames(luminal_clr) %in% colnames(luminal_metabolomics))
+```
+```{r}
+dir.create("../data/integration")
+save(mucosal_clr, luminal_clr, luminal_metabolomics, sample.info.av.luminal, 
+     metabolite.info, taxonomy_mucosal, taxonomy_luminal, 
+     file = "../data/integration/integration_processed.RData")
+```
+
+### Heatmap
+
+```{r}
+enriched_t_nt_av <- read.csv("t_vs_nt_sig_features.csv")
+metabolite.info.filt <- read.csv("metabo_info_filt.csv")
+```
+
+```{r}
+sample.info.tnt <- sample.info[sample.info$Mouse_Line == "AV" & sample.info$Sample_Type == "caecal",]
+cc_av_log <- cc.log.normed[, rownames(sample.info.tnt)] %>% as.data.frame()
+cc_av_log_enriched <- filter_rownames(cc_av_log, metabolite.info.filt$X) %>% 
+  as.matrix()
+
+ord <- c("CC_AV816", "CC_AV863", "CC_AV864", "CC_AV865", "CC_AV866", "CC_AV580", "CC_AV608", "CC_AV609", "CC_AV610", "CC_AV611", "CC_AV802", "CC_AV572", "CC_AV586", "CC_AV589", "CC_AV590", "CC_AV591", "CC_AV598", "CC_AV583", "CC_AV584", "CC_AV587", "CC_AV588", "CC_AV596", "CC_AV597", "CC_AV567", "CC_AV570", "CC_AV579", "CC_AV803", "CC_AV814", "CC_AV521", "CC_AV527", "CC_AV541", "CC_AV542", "CC_AV543", "CC_AV571", "CC_AV817", "CC_AV967", "CC_AV968", "CC_AV971", "CC_AV972", "CC_AV974", "CC_AV996", "CC_AV604", "CC_AV770", "CC_AV782", "CC_AV791", "CC_AV794", "CC_AV833", "CC_AV555", "CC_AV612", "CC_AV650", "CC_AV717", "CC_AV718")
+
+
+cc_av_log_enriched_ord <- cc_av_log_enriched[, ord]
+```
+
+Add column annotation for phenotype in same colours as volcano 
+remove row and colnames
+add annotation of metabolite class
+change colors to RdBu 
+
+heatmap customisation
+```{r}
+metabolite.info.filt <- metabolite.info.filt[metabolite.info.filt$Ontology2 != "Unknown", ]
+keep_metabo <- metabolite.info.filt$X
+
+sample.info.tnt.pheno <- sample.info.tnt["Phenotype"] %>% 
+  rownames_to_column(var = "id") %>% 
+  arrange(match(id, ord)) %>% 
+  column_to_rownames(var="id")
+
+column_ha <- HeatmapAnnotation(df = sample.info.tnt.pheno, 
+                                  col = list(Phenotype = c("NT" = "#3FA9F5",
+                                                      "T" = "#FF1D25")),
+                                  border = T, show_annotation_name = F)
+
+metabolite.info.filt.ord <- metabolite.info.filt %>% 
+  arrange(match(X, rownames(cc_av_log_enriched_ord))) %>% 
+  column_to_rownames(var="X") %>%
+  dplyr::select(Ontology2)
+
+uniq_classes<- unique(metabolite.info.filt.ord[,1])
+n_classes <- length(uniq_classes)
+class_palette <- kelly(n_classes)
+
+
+row_ha <- rowAnnotation(df = metabolite.info.filt.ord, col=list(Class = class_palette),
+                            show_annotation_name=F)
+
+cc_av_hm <- filter_rownames(as.data.frame(cc_av_log_enriched_ord), keep_metabo) %>% 
+  as.matrix()
+```
+
+```{r}
+hm <- Heatmap(scale.z.scores(cc_av_hm), cluster_columns = F, 
+        show_row_names = T, show_column_names = T, top_annotation = column_ha, 
+        right_annotation = row_ha, heatmap_legend_param = list(title="Z-score"), 
+        border = "black")
+
+row_names_av <- data.frame(Feature = hm@row_names_param$labels)
+ht <- draw(hm)
+row_ord_av <- row_order(ht)
+row_names_av <- row_names_av[order(match(rownames(row_names_av), row_ord_av)), , drop = FALSE]
+#write.csv(row_names_av, "hm_rows_av.csv")
+
+hm
+p <- as.ggplot(grid.grabExpr(draw(hm)))
+ggsave("TvsNT_differential_metabolites.pdf", p, device = "pdf", width = 15, height = 8)
+```
+
+### DIABLO integration 
+
+Run integration
+```{r}
+# Integration modelling phenotype
+system("Rscript run_diablo_luminal_mucosal.R")
+# Integration modelling genotype
+system("Rscript run_diablo_luminal_mucosal_genotype.R")
+```
+
+load results 
+```{r}
+source('../scripts/plsda_utils.R')
+source('../scripts/auxillary_funcs.R')
+load("../data/integration/integration_processed.RData")
+load("../data/integration/luminal_mucosal_integration_Phenotype.RData")
+
+load("../data/integration/luminal_mucosal_integration_Genotype.RData")
+```
+
+
+```{r}
+# Generate new metabolite info to enable interpretation 
+metabolite.info2 <- metabolite.info %>% 
+  as.data.frame()
+metabolite.info2$`Metabolite name` <- make.unique(metabolite.info2$`Metabolite name`)
+metabolite.info2 <- metabolite.info2 %>% 
+  as.matrix()
+
+# ASV info 
+taxonomy_luminal <- taxonomy_luminal %>% as.matrix()
+taxonomy_mucosal <- taxonomy_mucosal %>% as.matrix()
+
+```
+
+
+Correlation network, ASV/Metabolite feature list, circos plot just in case and 
+also boxplot of correlated metabolites
+
+#### Correlation network
+
+need to figure out how to rename metabolites 
+
+```{r}
+library(RColorBrewer)
+feature_cols <- c("Metabolite"= '#119FA6',"ASV_mucosal" = '#BB4430', "ASV_luminal" = '#F2B134')
+```
+
+##### Phenotype
+
+
+```{r}
+metabolite.names.pheno <- metabolite.info2[phenotype_splsda$names$colnames$Metabolome, ] %>% 
+  as.data.frame()
+phenotype_splsda$names$colnames$Metabolome <- metabolite.names.pheno$`Metabolite name`
+```
+
+##### Genotype
+
+```{r}
+metabolite.names.geno <- metabolite.info2[genotype_splsda$names$colnames$Metabolome, ] %>% 
+  as.data.frame()
+genotype_splsda$names$colnames$Metabolome <- metabolite.names.geno$`Metabolite name`
+```
+
+
+```{r}
+pdf("figures-manuscript/genotype_network_mucosal.pdf", width=14, height=14)
+net_geno<- network(genotype_splsda, cutoff = 0.65, blocks = c(1,3), graph.scale = 0.15, color.node = feature_cols[c(1,2)], size.node = 0.15,cex.node.name = 1, color.edge = rev(brewer.pal(10, "RdBu")), lwd.edge = c(2,2))
+net_geno
+dev.off()
+```
+```{r}
+
+```
+
+
+```{r}
+pdf("figures-manuscript/genotype_network_luminal.pdf", width=14, height=14)
+net_geno_luminal <- network(genotype_splsda, cutoff = 0.65, blocks = c(1,2), graph.scale = 0.15, color.node = feature_cols[c(1,3)], size.node = 0.15, color.edge = rev(brewer.pal(10, "RdBu")), lwd.edge = c(2,2))
+net_geno_luminal
+dev.off()
+```
+
+#### Loadings Phenotype
+```{r, fig.height=20, fig.width=15}
+pheno_metab_loadings_all <- plotLoadings(phenotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="Metabolome")$Metabolome%>% 
+  rownames_to_column("Feature")  %>% 
+  filter(!grepl("Unknown",Feature))
+pheno_asv_luminal_loadings_all <- plotLoadings(phenotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="ASV_luminal")$ASV %>% 
+  rownames_to_column("Feature")
+pheno_asv_mucosal_loadings_all <- plotLoadings(phenotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="ASV_mucosal")$ASV %>% 
+  rownames_to_column("Feature")
+
+phenotype_asv_loadings <- bind_rows(pheno_asv_luminal_loadings_all %>% mutate(dataset = "luminal"), 
+                                    pheno_asv_mucosal_loadings_all %>% mutate(dataset = "mucosal")) %>% 
+  filter(GroupContrib == "T") %>% 
+  slice_max(abs(importance), n = 30, with_ties = F) %>% 
+  # remove ASVs with same importance value
+  filter(abs(importance) > 0.01)
+
+phenotype_metab_loadings <- pheno_metab_loadings_all %>% 
+  filter(GroupContrib == "T") %>% 
+  slice_max(abs(importance), n = 30)  
+```
+
+#### Loadings Genotype
+
+```{r, fig.height=20, fig.width=15}
+geno_metab_loadings_all <- plotLoadings(genotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="Metabolome")$Metabolome%>% 
+  rownames_to_column("Feature")  %>% 
+  filter(!grepl("Unknown",Feature))
+geno_asv_luminal_loadings_all <- plotLoadings(genotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="ASV_luminal")$ASV %>% 
+  rownames_to_column("Feature")
+geno_asv_mucosal_loadings_all <- plotLoadings(genotype_splsda, comp = 1, contrib = "max", 
+                                   method = "median", ndisplay = 100, block="ASV_mucosal")$ASV %>% 
+  rownames_to_column("Feature")
+
+geno_asv_loadings <-  bind_rows(geno_asv_luminal_loadings_all %>% mutate(dataset = "luminal"), 
+                                    geno_asv_mucosal_loadings_all %>% mutate(dataset = "mucosal")) %>%
+  filter(GroupContrib == "tg/tg") %>% 
+  slice_max(abs(importance), n = 30)
+geno_metab_loadings <- geno_metab_loadings_all  %>% 
+  filter(GroupContrib == "tg/tg") %>% 
+  slice_max(abs(importance), n = 30)  
+```
+
+Now showing this separately for each variable 
+
+```{r}
+loadings_combined_geno <- 
+  bind_rows(geno_metab_loadings %>% mutate(Variable = "Genotype"), 
+                               geno_asv_loadings %>% mutate(Variable = "Genotype")) %>%
+  mutate(Type = case_when(grepl("Zotu", Feature) ~ "zOTU", 
+                          TRUE ~ "Metabolite")) %>% 
+  arrange(importance) 
+
+loadings_combined_pheno <-  bind_rows(phenotype_metab_loadings %>% mutate(Variable = "Phenotype" ), 
+                               phenotype_asv_loadings %>% mutate(Variable = "Phenotype")) %>%
+  mutate(Type = case_when(grepl("Zotu", Feature) ~ "zOTU", 
+                          TRUE ~ "Metabolite")) %>% 
+  arrange(importance) 
+```
+
+```{r}
+features_geno <- metabolite.info %>% filter_rownames(loadings_combined_geno$Feature) %>% rownames()
+names(features_geno) <- metabolite.info %>% filter_rownames(features_geno) %>% .$`Metabolite name`
+
+loadings_combined_geno$Metabolite <- sapply(loadings_combined_geno$Feature, function(x) names(features_geno)[match(x, features_geno)]) 
+loadings_combined_geno <- loadings_combined_geno %>% 
+  mutate(Feature2=case_when(is.na(Metabolite) ~ Feature, TRUE ~ Metabolite))
+```
+
+```{r}
+features_pheno <- metabolite.info %>% filter_rownames(loadings_combined_pheno$Feature) %>% rownames()
+names(features_pheno) <- metabolite.info %>% filter_rownames(features_pheno) %>% .$`Metabolite name`
+
+loadings_combined_pheno$Metabolite <- sapply(loadings_combined_pheno$Feature, function(x) names(features_pheno)[match(x, features_pheno)]) 
+loadings_combined_pheno <- loadings_combined_pheno %>% 
+  mutate(Feature2=case_when(is.na(Metabolite) ~ Feature, TRUE ~ Metabolite))
+```
+
+#### Final loadings plots
+
+Multiply importance by -1 for plotting and fix long metabolite names 
+
+```{r}
+loadings_combined_geno <- loadings_combined_geno %>% 
+  mutate(importance = importance * -1)
+loadings_combined_geno$Feature2 <- gsub("w/o MS2:", "", loadings_combined_geno$Feature2)
+# make feature column unique
+loadings_combined_geno$Feature2 <- make.unique(loadings_combined_geno$Feature2)
+```
+
+
+Genotype plot
+
+```{r}
+loadings_combined_geno %>% 
+  group_by(Variable) %>%
+  arrange(importance) %>% 
+  # this won't work, need to create numbered column and make that factor
+  mutate(Feature2=factor(Feature2, levels=Feature2)) %>% 
+  #slice_max(abs(importance), n = 20) %>% 
+  ggplot(aes(x = Feature2, y = importance))+
+  geom_col(aes(fill = Type), width = 0.7) + 
+  cowplot::theme_cowplot() + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=14), 
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=14)) +
+  scale_fill_manual(values = c('#119FA6', '#BB4430')) +
+  ylab("Importance") + 
+ scale_y_continuous(expand = c(0,0), breaks = seq(0, 0.40, 0.05), limits = c(0, 0.45)) + 
+  coord_flip()
+ggsave("figures-manuscript/genotype_loadings_mucosal.pdf", device = "pdf", 
+       width = 14, height = 10, dpi=300)
+```
+
+Phenotype plot
+
+```{r}
+loadings_combined_pheno <- loadings_combined_pheno %>% 
+  mutate(importance = importance * -1) 
+loadings_combined_pheno$Feature2 <- gsub("w/o MS2:", "", loadings_combined_pheno$Feature2)
+# make feature column unique
+loadings_combined_pheno$Feature2 <- make.unique(loadings_combined_pheno$Feature2)
+```
+
+```{r}
+loadings_combined_pheno %>% 
+  group_by(Variable) %>%
+  arrange(importance) %>% 
+  # this won't work, need to create numbered column and make that factor
+  mutate(Feature2=factor(Feature2, levels=Feature2)) %>% 
+  #slice_max(abs(importance), n = 20) %>% 
+  ggplot(aes(x = Feature2, y = importance))+
+  geom_col(aes(fill = Type), width = 0.7) + 
+  cowplot::theme_cowplot() + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=14), 
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=14)) +
+  scale_fill_manual(values = c('#119FA6', '#BB4430')) +
+  ylab("Importance") + 
+  scale_y_continuous(expand = c(0,0), breaks = seq(0, 0.40, 0.05), limits = c(0, 0.45)) + 
+  coord_flip()
+ggsave("figures-manuscript/phenotype_loadings_mucosal.pdf", device = "pdf", 
+       width = 14, height = 10, dpi=300)
+```
+
+
+##### Boxplot of correlated FAs
+
+
+filter to only FAs 
+```{r}
+all_correlated_metabolites <- unique(corr_feat_luminal %>% filter(cor_comp1 <= -0.65) %>% .$ID,
+                                     corr_feat_mucosal %>% filter(cor_comp1 <= -0.65) %>% .$ID)
+
+correlated_metabolites_df <- metabolite.info %>% 
+  filter_rownames(all_correlated_metabolites)
+correlated_metabolites <- correlated_metabolites_df %>% 
+  rownames()
+```
+
+```{r}
+sample.info.cc.av <- sample.info %>% 
+  filter(Sample_Type == "caecal") %>% 
+  filter(Mouse_Line == "AV") %>% 
+  filter(Genotype != "tg/wt")
+
+cc.av.cor <- filter_rownames(as.data.frame(cc.av), correlated_metabolites) %>%
+  select(all_of(rownames(sample.info.cc.av))) %>%
+  as.matrix()
+```
+
+
+Manually calculate pvals 
+```{r}
+wk5_av_p <- pairwise_ttest_metabo(cc.av.cor, factor = "Age_Genotype", case="5wk_tg/tg", control = "5wk_fl/fl", 
+                   sample_col = "SampleID", meta = sample.info.cc.av) %>% 
+  rownames_to_column("id")
+wk5_av_p$feature <- sapply(wk5_av_p$id, function(x) names(features)[match(x, features)]) 
+
+wk12_av_p <- pairwise_ttest_metabo(cc.av.cor, factor = "Age_Genotype", case="12wk_tg/tg", control = "12wk_fl/fl", 
+                      sample_col = "SampleID", meta = sample.info.cc.av) %>% 
+  rownames_to_column("id")
+
+wk12_av_p$feature <- sapply(wk12_av_p$id, function(x) names(features)[match(x, features)])
+
+wk20_av_p <- pairwise_ttest_metabo(cc.av.cor, factor = "Age_Genotype", case="20wk_tg/tg", control = "20wk_fl/fl", 
+                      sample_col = "SampleID", meta = sample.info.cc.av) %>% 
+  rownames_to_column("id")
+
+wk20_av_p$feature <- sapply(wk20_av_p$id, function(x) names(features)[match(x, features)]) 
+```
+
+Get FA significant at, at least one timepoint 
+
+```{r}
+metabolite.info <- metabolite.info %>% 
+  rownames_to_column("Metabolite_id") %>% 
+  group_by(`Metabolite name`) %>%
+  mutate(`Metabolite name` = ifelse(row_number() == 1, `Metabolite name`, paste0(`Metabolite name`, "_", row_number() - 1))) %>%
+  ungroup() %>% 
+  column_to_rownames("Metabolite_id")
+
+cor_detected_df <- metabolite.info %>% 
+  filter_rownames(rownames(wk5_av_p)) 
+
+cor_detected <- cor_detected_df$`Metabolite name`
+names(cor_detected) <- rownames(cor_detected_df)
+
+# This is those which were significant in pairwise analysis - we want those from
+# global analysis 
+cor_sig <- c(rownames(wk5_av_p)[wk5_av_p$p.val.adj < 0.05], 
+            rownames(wk12_av_p)[wk12_av_p$p.val.adj < 0.05], 
+            rownames(wk20_av_p)[wk20_av_p$p.val.adj < 0.05]) %>% 
+  unique()
+
+cor_sig_df <- cor_detected_df %>% 
+  filter_rownames(cor_sig)
+
+# make sure order of fa detected is same as cc.av.filt.fa
+cor_detected <- cor_detected[rownames(cc.av.cor)]
+```
+
+```{r}
+genotypes <- c("fl/fl", "tg/tg")
+av_plot_df <- cc.av.cor %>%
+  as.data.frame() %>% 
+  rownames_to_column("id") %>% 
+  add_column(metabolite=cor_detected) %>%
+      pivot_longer(-c(id, metabolite), names_to="sample", values_to="logInt") %>%
+      add_column(age=sample.info.cc.av[.$sample, "Age"], genotype=sample.info.cc.av[.$sample, "Genotype"],
+                 ) %>%
+      mutate(age = age %>% fct_relevel("5wk")) %>% 
+      filter(genotype == genotypes[1] | genotype == genotypes[2]) %>%
+      mutate(metabolite=sapply(.$metabolite, function(x) str_remove(strsplit(x, "from")[[1]][1], "w/o MS2:"))) 
+```
+
+Plot currently doesn't account for duplicate FAs 
+
+```{r}
+p1 <- av_plot_df %>%
+  # filter to only FAs
+  filter(metabolite %in% c("C20 hydroxy fatty acid", "FA 22:4_1","FA 24:1_1", "FA 24:6", "FA 22:6_1",
+                           "FA 22:5_2", "FA 22:3_1", "FA 22:0","FAHFA 22:6/3:0", "FA 20:3")) %>%
+      ggplot(aes(x=metabolite, y=logInt, fill=genotype)) +
+  geom_boxplot(color="black", alpha=0.75) +
+  geom_point(aes(color=genotype), size = 1.5, position = position_jitterdodge(jitter.width = 0.25,
+                                                                              dodge.width = 1)) + 
+    labs(x="FA", y="LogInt") + 
+      theme_pubr() +
+      facet_wrap("age", ncol=1, scales="free_y") + 
+      scale_fill_manual(values=pal) +
+      scale_color_manual(values=pal) +
+      theme(axis.text.x=element_text(angle=45, hjust=1),
+            strip.text = element_text(size=22)) +
+      scatter_theme 
+p1
+ggsave(plot = p1, "figures-manuscript/AV_cor_metabolites.pdf", width=12,height=10, dpi = 300, device = "pdf")
+```
+
+## Targeted Metabolomics 
+
+```{r}
+fa_data_targeted <- read_csv("../data/metabolomics/targeted_tissue/fa_data_av.csv")
+```
+
+```{r}
+# elongation
+fa_data_targeted["FA18:0/16:0"] <- fa_data_targeted["FA18:0"] / fa_data_targeted["FA16:0"]
+fa_data_targeted["FA22:0/20:0"] <- fa_data_targeted["FA22:0"] / fa_data_targeted["FA20:0"]
+fa_data_targeted["FA18:1-c9 (n-9)/FA16:1-c9 (n-7)"] <- fa_data_targeted["FA18:1-c9 (n-9)"] / fa_data_targeted["FA16:1-c9 (n-7)"]
+
+# desaturation 
+
+fa_data_targeted["FA16:1-c9 (n-7)/FA16:0"] <- fa_data_targeted["FA16:1-c9 (n-7)"] / fa_data_targeted["FA16:0"]
+fa_data_targeted["FA18:1-c9 (n-9)/FA18:0"] <- fa_data_targeted["FA18:1-c9 (n-9)"] / fa_data_targeted["FA18:0"]
+```
+
+```{r}
+fa_data_homo <- fa_data_targeted %>% 
+  filter(Genotype != "tg/wt")
+# Quickly add omega-3 and omega-6 classes based on column names matching regex
+fa_data_homo <- fa_data_homo %>%
+  mutate(
+    `omega-3` = rowSums(select(., matches("n-3")), na.rm = TRUE),
+    `omega-6` = rowSums(select(., matches("n-6")), na.rm = TRUE)
+  )
+
+# Add another class for VLCFA based on column index 23 to 27
+fa_data_homo <- fa_data_homo %>%
+  mutate(VLCFA = rowSums(select(., 23:27), na.rm = TRUE))
+
+``` 
+
+```{r}
+write.csv(fa_data_targeted, "source_data/source_data_Fig_3_d_f_Ext_data_4_g_h.csv")
+```
+
+
+## Plot FA's by class 
+
+```{r}
+fa_classes <- c("SAFA", "MUFA", "PUFA", "VLCFA")
+```
+
+Plots 
+```{r, fig.height=4, fig.width=4.5}
+pal2 <- pal[c(1,3)]
+names(pal2) <- c("NT", "T")
+for (i in fa_classes) {
+  p <- ggplot(fa_data_homo, aes_string(x = "Phenotype", y=i, fill ="Phenotype")) + 
+    geom_boxplot(color="black") + 
+    geom_point(aes(color=Phenotype, fill = Phenotype), size=3, position = position_jitterdodge(0.2)) + 
+    scale_fill_manual(values=pal2) + 
+    scale_color_manual(values=pal2) + 
+    theme_cowplot()+ 
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+    stat_compare_means(comparisons = list(c("NT", "T")),
+                              method = "wilcox.test",
+                              label = "p.format") +
+    font("xlab", size = 20) +
+    font("ylab", size = 20) +
+    font("x.text", size = 18) +
+    font("y.text", size = 18) +
+    font("legend.title", size = 18) +
+    font("legend.text", size = 18)
+  i.format <- gsub("/", "_", i)
+  i.format <- gsub(":", "-", i.format)
+  name <- paste0("figures-manuscript//", i.format, "_av-T-NT.pdf")
+  ggsave(name, p, dpi=300, height = 5, width = 5.5)
+  print(p)
+}
+```
+
+## Elongation & Desaturation
+
+### Elongation
+
+```{r}
+elongation <- c("FA18:0/16:0","FA22:0/20:0", "FA18:1-c9 (n-9)/FA16:1-c9 (n-7)")
+desaturation <- c("FA16:1-c9 (n-7)/FA16:0", "FA18:1-c9 (n-9)/FA18:0")
+```
+Plots 
+
+```{r, fig.height=4, fig.width=4.5}
+for (i in elongation) {
+  p <- ggplot(fa_data_homo, aes(x = Phenotype, y=.data[[i]], fill =Phenotype)) + 
+    geom_boxplot(color="black") + 
+    geom_point(aes(color=Phenotype, fill = Phenotype), size=3, position = position_jitterdodge(0.2)) + 
+    scale_fill_manual(values=pal2) + 
+    scale_color_manual(values=pal2) + 
+    theme_cowplot()+ 
+    stat_boxplot(color = "black",
+                 geom = "errorbar",
+                 width = 0.2) +
+    stat_compare_means(comparisons = list(c("NT", "T")),
+                              method = "wilcox.test",
+                              label = "p.signif") +
+    font("xlab", size = 20) +
+    font("ylab", size = 20) +
+    font("x.text", size = 18) +
+    font("y.text", size = 18) +
+    font("legend.title", size = 18) +
+    font("legend.text", size = 18)
+  i.format <- gsub("/", "_", i)
+  i.format <- gsub(":", "-", i.format)
+  name <- paste0("figures-manuscript//", i.format, "_av-T-NT.pdf")
+  ggsave(name, p, dpi=300, height = 5, width = 5.5)
+  print(p)
+}
+```
+
+```{r}
+for (i in desaturation){
+p <- ggboxplot(data=py$fa_data_homo , x = "Phenotype", y=i,
+          fill = "Phenotype", 
+          palette = av_t_nt, bxp.errorbar = T, bxp.errorbar.width = 0.1)
+
+p <- p + stat_compare_means(comparisons = my_comparisons, 
+                            method="wilcox.test", label="p.signif") +
+  font("xlab", size=20) + 
+  font("ylab", size=20) +
+  font("x.text", size=18) + 
+  font("y.text", size=18) + 
+  font("legend.title", size=18) + 
+  font("legend.text", size = 18)
+i.format <- gsub("/", "_", i)
+i.format <- gsub(":", "-", i.format)
+name <- paste0("figures/",i.format, "_av-T-NT.pdf")
+ggsave(name, p, dpi=300, height = 5, width = 5.5)
+}
+```
+
+## Tissue metabolomics 
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(ggsci)
+```
+
+```{r}
+load("../data/metabolomics/tissue/tissue_processed.RData")
+source("../scripts/Normalisation.R")
+source("../scripts/plsda_utils.R")
+source("../scripts/pca_utils.R")
+source("../scripts/auxillary_funcs.R")
+source("../scripts/full_voclano_plots.R")
+```
+
+
+```{r}
+# auxiliary function for ordering by rownames
+order.by.rows <- function(toSort, sortRef, join='left') {
+  if (join == 'left') {
+    
+  }
+  toSort[rownames(sortRef),]
+}
+
+frequency.subset <- function(..., threshold=.6) {
+  tab <- table(c(...))/length(list(...))
+  return(names(tab)[tab > threshold])
+}
+
+combine.data <- function(datasets, features) {
+  comb.data <- datasets[[1]][,features]
+  for (i in 2:length(datasets)) {
+    comb.data <- rbind(comb.data, datasets[[i]][,features])
+  }
+  return(comb.data)
+}
+
+scatter_theme <- theme(
+  axis.title=element_text(size=26),
+  axis.text=element_text(size=22),
+  legend.title=element_text(size=26),
+  legend.text=element_text(size=22),
+  strip.text = element_text(size=22)
+)
+
+pairwise_ttest_metabo <- function(metabo, factor, case, control, 
+                                sample_col, meta, p_adjust="BH"){
+  
+  # initialise pval matrix 
+  p.val <- matrix(NA, nrow=nrow(metabo), ncol=1, 
+                  dimnames=list(row.names(metabo), "p.val"))
+  
+  featmat <- as.matrix(metabo)
+  
+  for (row in rownames(featmat)){
+    x <- featmat[row, meta %>% 
+                   filter(.data[[ factor ]] ==control) %>% pull(.data[[ sample_col ]])]
+    y <- featmat[row, meta %>% 
+                   filter(.data[[ factor ]] ==case) %>% pull(.data[[ sample_col ]])]
+
+  
+    p.val[row, ] <- t.test(x, y, exact=FALSE)$p.value
+  }
+  
+  p.val.adj <- p.val %>% 
+  as.data.frame() %>% 
+  rstatix::adjust_pvalue("p.val", method = p_adjust)
+  
+  return(p.val.adj)
+}
+```
+
+
+```{r utility variables}
+samples <- colnames(tissue_log)
+age <- tissue_meta[samples,"Age"]
+names(age) <- samples
+phenotype <- tissue_meta[samples,"Phenotype"]
+names(phenotype) <- samples
+tissue <- tissue_meta[samples, "Tissue"]
+names(tissue) <- samples
+
+
+
+add_features <- tissue_data$info[,c("Ontology", "Metabolite.name")] %>%
+                    add_column(Feature=rownames(tissue_data$info))
+
+fn <- tissue_data$info$Metabolite.name
+fn[fn == "Unknown"] <- NA
+names(fn) <- rownames(tissue_data$info)
+```
+
+Remove AVI
+```{r}
+AV_samples <- tissue_meta %>% 
+  filter(Mouse_Line == "AV") %>% 
+  pull(SampleID)
+
+tissue_meta <- tissue_meta %>% 
+  filter(Mouse_Line != "AVI")
+tissue_log <- tissue_log %>% 
+  dplyr::select(all_of(AV_samples))
+tissue_scaled <- tissue_scaled[, AV_samples]
+
+```
+
+
+How many samples do we have T and TA from the same mice? 
+
+```{r}
+tissue_meta %>% 
+  filter(Tissue == "T" | Tissue  == "TA") %>% 
+  filter(Mouse_Line != "AVI")
+```
+
+Filter again to only these samples
+
+```{r}
+paired_samples <- c("AV604T", "AV604TA", "AV770T", "AV770TA", "AV551T", "AV551TA", "AV612T1", "AV612T2", "AV612TA", "AV717T", "AV717TA")
+tissue_meta <- tissue_meta %>% 
+  filter(SampleID %in% paired_samples)
+tissue_log <- tissue_log %>% 
+  dplyr::select(all_of(paired_samples))
+tissue_scaled <- tissue_scaled[, paired_samples]
+```
+
+
+PCA of the tissue metabolomics data comparing T and TA, volcano plot and 
+boxplots if any metabolites are different. 
+
+PCA - tumor vs TA
+```{r}
+t_ta_plsda <- plsda(t(tissue_scaled), tissue_meta$Tissue)
+
+plot_samples(t_ta_plsda, group.name = "Tissue", geom = "point", size = 2)
+```
+
+PLSDA - tumor vs TA
+```{r}
+t_ta_pca <- prcomp(t(tissue_scaled))
+t_ta_ve <- t_ta_pca$sdev^2/sum(t_ta_pca$sdev^2)
+
+as.data.frame(t_ta_pca$x) %>%
+  add_column(Sample=rownames(t_ta_pca$x)) %>%
+  add_column(Tissue=tissue_meta[rownames(t_ta_pca$x), "Tissue"]) %>%
+  ggplot(aes(x=PC1, y=PC2, colour=Tissue)) +
+  geom_point(size=4) +
+  theme_pubr() +
+  scatter_theme +
+  scale_colour_d3() +
+  xlab(paste0("PC", 1, " (", round(t_ta_ve[1], 3)*100, "%)")) +
+  ylab(paste0("PC", 2, " (", round(t_ta_ve[2], 3)*100, "%)")) + 
+  stat_ellipse(aes(fill=Tissue), geom="polygon", alpha=0.2) + 
+  scale_fill_d3()
+ggsave("figures-manuscript/tumor_ta_pca.pdf", dpi=300, device = "pdf", height = 6, width = 8)
+```
+
+Volcano plot Tumor vs TA
+```{r}
+
+t_ta_adj_p <- get_padj(tissue_scaled, tissue[colnames(tissue_scaled)],
+                         test.method=t.test, p.adjust.method="BH")
+t_ta_fc <- fold.change(data=tissue_log,
+                         groups=tissue[colnames(tissue_log)])
+```
+
+```{r}
+t_ta_fc_plot <- t_ta_fc$fold.changes * -1
+
+p <- plot_volcano_names(t_ta_adj_p, t_ta_fc_plot,
+                   fn, min.p=.1, max.overlaps=10)
+p
+ggsave("figures-manuscript/t_ta_volcano.pdf", p, device = "pdf", height = 8, width = 10, dpi = 300)
+```
+

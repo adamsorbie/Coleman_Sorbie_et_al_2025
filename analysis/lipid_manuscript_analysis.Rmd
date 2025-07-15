@@ -1,0 +1,1111 @@
+---
+title: "lipids_manuscript"
+author: "Adam Sorbie"
+date: "2023-09-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Microbiome 
+
+## Libraries 
+
+```{r, include=FALSE}
+library(ggpubr)
+library(ComplexHeatmap)
+library(ggplotify)
+library(rstatix)
+library(ggprism)
+library(zoo)
+source("analysis_functions.R")
+conflicted::conflict_prefer_all("dplyr")
+```
+
+## Load microbiome data
+
+Relative
+```{r}
+#load("../data/tissue/16S/av_tissue16Srel.RData")
+load("../data/spatial/16S/av_spatial16Srel.RData")
+```
+
+Absolute
+```{r}
+load("../data/spatial/16S/av_spatial16Sabs.RData")
+```
+
+PICRUSt2
+
+```{r}
+#load("../data/tissue/PICRUSt2/tissue_picrust.RData")
+load("../data/spatial/PICRUSt2/spatial_picrust.RData")
+```
+
+Update these colours 
+```{r}
+color_pal <- c("NT" = "#9D9D9C", "T" = "#BE1522")
+hm_pal <- list("sample"=c("Control" = "#DAD6D6", "NT" = "#30638E", 
+               "TA" = "#FFA987", "T" = "#D1495B"))
+dir.create("figures")
+dir.create("results")
+```
+
+## Unbiased analysis 
+PCA + differentially abundant EC/KO numbers and pathways
+
+
+### PCA
+
+#### Spatial 
+
+Normalisation
+```{r}
+ko_spatial_norm <- ko_spatial %>% 
+  normalize(method = "relative") %>% 
+  filter_prev_abund(abund = 1e-6, prev=0.33) %>% 
+  as.matrix() 
+
+ko_spatial_pca <- ko_spatial_norm %>% 
+  t() %>% 
+  merge(av_spatial_meta[c("Mouse_Phenotype")],by=0) %>%  
+  column_to_rownames(var="Row.names")
+
+ec_spatial_norm <- ec_spatial %>% 
+  normalize(method = "relative") %>% 
+  filter_prev_abund(abund = 1e-6, prev=0.33) %>% 
+  as.matrix() 
+
+ec_spatial_pca <- ec_spatial_norm %>% 
+  t() %>% 
+  merge(av_spatial_meta[c("Mouse_Phenotype")],by=0) %>%  
+  column_to_rownames(var="Row.names")
+```
+
+
+KO NT vs T 
+```{r}
+pca <- prcomp(ko_spatial_pca[c(1:4277)], scale. = T)
+p<- autoplot(pca, data = ko_spatial_pca,
+         colour = "Mouse_Phenotype") + 
+  geom_point(aes(color=Mouse_Phenotype), size=3, alpha=0.75) + 
+  scale_color_manual(values = color_pal) + 
+  theme_cowplot()
+p$layers[[1]] <- NULL
+p
+ggsave("figures/PCA_plot_ko-av-spatial.pdf", device = "pdf", dpi=300, height =6, width = 10)
+```
+
+EC NT vs T 
+```{r}
+pca <- prcomp(ec_spatial_pca[c(1:1502)], scale. = T)
+p <- autoplot(pca, data = ec_spatial_pca,
+         colour = "Mouse_Phenotype") + 
+  geom_point(aes(color=Mouse_Phenotype), size=3, alpha=0.75) + 
+  scale_color_manual(values = color_pal) + 
+  theme_cowplot()
+p$layers[[1]] <- NULL
+p
+ggsave("figures/PCA_plot_ec-av-spatial.pdf", device = "pdf", dpi=300, height =6, width = 10)
+```
+### Differential abundance 
+
+KO NT vs T
+```{r}
+da_ko <-
+  fc(
+    seqtab = as.matrix(ko_spatial_norm),
+    meta = av_spatial_meta %>% rownames_to_column("SampleID"),
+    feat_type = "functional",
+    var = "Mouse_Phenotype",
+    case = "T",
+    ctrl = "NT"
+  )
+plot_volcano(da_ko) 
+ggsave("figures/volcano_plot_ko-av-spatial.pdf", device = "pdf", dpi=300, height =11, width = 15)
+```
+
+```{r}
+DT::datatable(
+  da_ko$res %>% mutate(significant = case_when(p.adj < 0.05 &
+                                   abs(log2FC) > 0.32 ~ "sig",
+                       TRUE ~ "NS")),
+  extensions = "Buttons",
+  options = list(buttons = c("excel"))
+)
+```
+
+
+EC NT vs T
+```{r}
+da_ec <-
+  fc(
+    seqtab = as.matrix(ec_spatial_norm),
+    meta = av_spatial_meta %>% rownames_to_column("SampleID"),
+    feat_type = "functional",
+    var = "Mouse_Phenotype",
+    case = "T",
+    ctrl = "NT"
+  )
+plot_volcano(da_ec) 
+ggsave("figures/volcano_plot_ec-av-spatial.pdf", device = "pdf", dpi=300, height =11, width = 15)
+```
+```{r}
+DT::datatable(
+  da_ec$res %>% mutate(significant = case_when(p.adj < 0.05 &
+                                   abs(log2FC) > 0.32 ~ "sig",
+                       TRUE ~ "NS")),
+  extensions = "Buttons",
+  options = list(buttons = c("excel"))
+)
+```
+
+## Heatmaps
+
+### FA response 
+
+#### Proximal
+Bacteria respond to toxic FAs in a number of ways. Major adaptation methods include
+detoxification, degradation/assimilation or efflux. 
+
+ohyA (detox), and farE (efflux) were both significantly increased in tumour in
+the unbiased analysis. 
+
+```{r}
+fa_detox <- c("ohyA", "TGL2")
+fa_deg <- c("fadD", "fadL", "K07030", "K05939") # fakAb , 
+fa_efflux <- c("K03543", "K03446","K06994") # tet38 K08168, farA K03543, farE K06994   
+  
+all_fa_response <- c(fa_detox, fa_deg, fa_efflux)
+```
+
+Limit analysis to tumour susceptible regions (Sites 1-10)
+```{r}
+metadata_sus <-
+  av_spatial_meta %>% filter(Tissue_Location == "Susceptible") %>% 
+  filter(Tissue_Number <= 10)
+```
+
+```{r}
+
+ord_vec <- c(metadata_sus %>% filter(Tissue == "Control") %>% rownames(),
+             metadata_sus %>% filter(Tissue == "NT") %>% arrange(MouseID, Tissue_Number) %>% rownames(),
+             metadata_sus %>% filter(Tissue == "TA") %>% arrange(MouseID, Tissue_Number)%>% rownames(),
+             metadata_sus %>% filter(Tissue == "T") %>% arrange(MouseID, Tissue_Number)%>% rownames())
+
+row_ord <-
+  c("K10254_ohyA, sph; oleate hydratase [EC:4.2.1.53]",
+    "K01046_lip, TGL2; triacylglycerol lipase [EC:3.1.1.3]",
+    "K01897_ACSL, fadD; long-chain acyl-CoA synthetase [EC:6.2.1.3]",
+    "K05939_aas; acyl-[acyl-carrier-protein]-phospholipid O-acyltransferase / long-chain-fatty-acid--[acyl-carrier-protein] ligase [EC:2.3.1.40 6.2.1.20]",
+    "K06076_fadL; long-chain fatty acid transport protein",
+    "K07030_K07030; uncharacterized protein",
+    "K03446_emrB; MFS transporter, DHA2 family, multidrug resistance protein",
+    "K03543_emrA; membrane fusion protein, multidrug efflux system",
+    "K06994_K06994; putative drug exporter of the RND superfamily"
+  ) 
+```
+
+
+```{r}
+# filter to only include genes of interest 
+ko_fa_ad <- ko_spatial %>%
+  normalize(method = "relative") %>%
+  filter_feat(by = "features",
+              features = all_fa_response,
+              partial_feat_matching = T)
+
+# this could be function 
+mat_in <- as.matrix(ko_fa_ad)
+mat_zscore <- t(scale(t(mat_in)))
+
+mat_ordered <- mat_zscore[, ord_vec]
+# order also by types of KOs
+mat_ordered <- mat_ordered[row_ord, ]
+
+sample_metadata <- data.frame(sample = rep(c("Control","NT", "TA", "T"), c(43, 21, 16, 20)))
+
+tissue_numbers <- word(ord_vec, start = 5, end = 6,sep = "-")
+colnames(mat_ordered) <- tissue_numbers 
+
+colAnn <- HeatmapAnnotation(df=sample_metadata, which = "col", col = hm_pal)
+hm <- Heatmap(mat_ordered, cluster_rows = F, cluster_columns = F, 
+              top_annotation = colAnn, show_column_names = T, 
+              row_names_max_width = unit(5, "cm"), column_names_rot = 45)
+
+
+p <- as.ggplot(grid.grabExpr(draw(hm, heatmap_legend_side = "right",annotation_legend_side = "right")))
+ggsave("figures/fa_adaptation.pdf", p, device = "pdf", width =21, height = 10, 
+       dpi=300)
+p
+```
+
+```{r}
+# filter to only include genes of interest 
+ko_fa_det <- ko_spatial %>%
+  normalize(method = "relative") %>%
+  filter_feat(by = "features",
+              features = fa_detox,
+              partial_feat_matching = T)
+
+mat_in <- as.matrix(ko_fa_det)
+mat_zscore <- t(scale(t(mat_in)))
+mat_ordered <- mat_zscore[, ord_vec]
+
+# order also by types of KOs
+row_ord <-
+  c("K10254_ohyA, sph; oleate hydratase [EC:4.2.1.53]",
+    "K01046_lip, TGL2; triacylglycerol lipase [EC:3.1.1.3]"
+  ) 
+
+mat_ordered <- mat_ordered[row_ord, ]
+colnames(mat_ordered) <- tissue_numbers 
+
+hm <- Heatmap(mat_ordered, cluster_rows = F, cluster_columns = F, 
+              top_annotation = colAnn, show_column_names = T, 
+              row_names_max_width = unit(5, "cm"))
+
+p <- as.ggplot(grid.grabExpr(draw(hm, heatmap_legend_side = "right",annotation_legend_side = "right")))
+ggsave("figures/fa_detox.pdf", p, device = "pdf", width =19 , height = 3, 
+       dpi=300)
+p
+```
+#### Distal 
+
+```{r}
+metadata_nonsus <-
+  av_spatial_meta %>% filter(Tissue_Location == "Non-Susceptible")
+ord_vec_ns <- c(metadata_nonsus %>% filter(Tissue == "Control") %>% rownames(),
+             metadata_nonsus %>% filter(Tissue == "NT") %>% arrange(MouseID, Tissue_Number) %>% rownames())
+```
+
+
+```{r}
+# filter to only include genes of interest 
+ko_fa_ad_ns <- ko_spatial %>%
+  normalize(method = "relative") %>%
+  filter_feat(by = "features",
+              features = all_fa_response,
+              partial_feat_matching = T)
+
+# this could be function 
+mat_in <- as.matrix(ko_fa_ad_ns)
+mat_zscore <- t(scale(t(ko_fa_ad_ns)))
+
+mat_ordered <- mat_zscore[, ord_vec_ns]
+# order also by types of KOs
+mat_ordered <- mat_ordered[row_ord, ]
+
+sample_metadata <- data.frame(sample = rep(c("Control","NT"), c(24, 34)))
+
+tissue_numbers <- word(ord_vec_ns, start = 5, end = 6,sep = "-")
+colnames(mat_ordered) <- tissue_numbers 
+
+colAnn <- HeatmapAnnotation(df=sample_metadata, which = "col", col = hm_pal)
+hm <- Heatmap(mat_ordered, cluster_rows = F, cluster_columns = F, 
+              top_annotation = colAnn, show_column_names = T, 
+              row_names_max_width = unit(5, "cm"), column_names_rot = 45)
+
+
+p <- as.ggplot(grid.grabExpr(draw(hm, heatmap_legend_side = "right",annotation_legend_side = "right")))
+ggsave("figures/fa_adaptation_nonsus.pdf", p, device = "pdf", width =21, height = 10, 
+       dpi=300)
+p
+```
+
+```{r}
+# filter to only include genes of interest 
+ko_fa_det <- ko_spatial %>%
+  normalize(method = "relative") %>%
+  filter_feat(by = "features",
+              features = fa_detox,
+              partial_feat_matching = T)
+
+mat_in <- as.matrix(ko_fa_det)
+mat_zscore <- t(scale(t(mat_in)))
+mat_ordered <- mat_zscore[, ord_vec_ns]
+
+# order also by types of KOs
+row_ord <-
+  c("K10254_ohyA, sph; oleate hydratase [EC:4.2.1.53]",
+    "K01046_lip, TGL2; triacylglycerol lipase [EC:3.1.1.3]"
+  ) 
+
+mat_ordered <- mat_ordered[row_ord, ]
+colnames(mat_ordered) <- tissue_numbers 
+
+hm <- Heatmap(mat_ordered, cluster_rows = F, cluster_columns = F, 
+              top_annotation = colAnn, show_column_names = T, 
+              row_names_max_width = unit(5, "cm"))
+
+p <- as.ggplot(grid.grabExpr(draw(hm, heatmap_legend_side = "right",annotation_legend_side = "right")))
+ggsave("figures/fa_detox_nonsus.pdf", p, device = "pdf", width =19 , height = 3, 
+       dpi=300)
+p
+```
+
+## Boxplots of relative abundance 
+
+### Spatial 
+
+```{r}
+ko_spatial_meta <- ko_spatial_norm %>% 
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  column_to_rownames("Row.names")
+```
+
+#### ohyA 
+
+```{r}
+comps <- list(c("NT", "T"))
+plot_feat(
+  feat_string = "K10254_ohyA",
+  feat_table = ko_spatial_meta,
+  x = "Mouse_Phenotype",
+  y = "K10254_ohyA, sph; oleate hydratase [EC:4.2.1.53]",
+  fill = "Mouse_Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "ohyA relative abundance [%]"
+)
+ggsave("figures/oleate_hydratase_av-spatial.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+#### lip2 
+
+```{r}
+plot_feat(
+  feat_string = "K01046_lip",
+  feat_table = ko_spatial_meta,
+  x = "Mouse_Phenotype",
+  y = "K01046_lip, TGL2; triacylglycerol lipase [EC:3.1.1.3]",
+  fill = "Mouse_Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "lip2 relative abundance [%]"
+)
+ggsave("figures/lipase2_av-spatial.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+NT lip2 mean abundance is significantly higher, however appears to be a subgroup of samples in T
+with very high lip2 abundance. Heatmap suggests this is not restricted to tumour samples only, however 
+heatmap is ordered by tumour burden thus lip2 abundance may increase with increasing tumour number. 
+
+#### farE
+
+```{r}
+plot_feat(
+  feat_string = "K06994",
+  feat_table = ko_spatial_meta,
+  x = "Mouse_Phenotype",
+  y = "K06994_K06994; putative drug exporter of the RND superfamily",
+  fill = "Mouse_Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "farE relative abundance [%]"
+)
+ggsave("figures/fatty_acid_efflux_MMPL_transporter_av-spatial.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+### Tissue 
+
+Non-spatial data 
+```{r}
+ko_homo_meta <- ko_tissue %>% 
+  normalize(method = "relative") %>%
+  t() %>% 
+  merge(av_tissue_meta, by=0) %>% 
+  filter(Genotype != "tg/wt") %>% 
+  column_to_rownames("Row.names")
+```
+
+#### ohyA
+
+```{r}
+plot_feat(
+  feat_string = "K10254_ohyA",
+  feat_table = ko_homo_meta,
+  x = "Phenotype",
+  y = "K10254_ohyA, sph; oleate hydratase [EC:4.2.1.53]",
+  fill = "Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "ohyA relative abundance [%]"
+)
+ggsave("figures/oleate_hydratase_av-tissue.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+
+```
+
+#### lip2
+
+```{r}
+plot_feat(
+  feat_string = "K01046_lip",
+  feat_table = ko_homo_meta,
+  x = "Phenotype",
+  y = "K01046_lip, TGL2; triacylglycerol lipase [EC:3.1.1.3]",
+  fill = "Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "lip2 relative abundance [%]"
+)
+ggsave("figures/lipase2_av-tissue.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+
+```
+
+#### farE
+
+```{r}
+plot_feat(
+  feat_string = "K06994",
+  feat_table = ko_homo_meta,
+  x = "Phenotype",
+  y = "K06994_K06994; putative drug exporter of the RND superfamily",
+  fill = "Phenotype",
+  comps = comps,
+  cols = color_pal,
+  ord=c("NT", "T"),
+  ylab = "farE relative abundance [%]"
+)
+ggsave("figures/fatty_acid_efflux_MMPL_transporter_av-tissue.pdf", device = "pdf", dpi=300, height = 4, width = 4.5)
+```
+## Spatial maps code 
+
+#### ohyA
+```{r}
+tumor_ohyA_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "T" & Mouse_Genotype == "tg/tg") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("Oleate")) %>% 
+  summarise_all(.funs = mean)
+
+nontumor_ohyA_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "NT" & Mouse_Genotype == "fl/fl") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("Oleate")) %>% 
+  summarise_all(.funs = mean)
+
+write.csv(nontumor_ohyA_mean, "results/nontumor_ohyA_means.csv")
+write.csv(tumor_ohyA_mean, "results/tumor_ohyA_means.csv")
+```
+#### lip2
+```{r}
+tumor_lip2_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "T" & Mouse_Genotype == "tg/tg") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("TGL2")) %>% 
+  summarise_all(.funs = mean)
+
+nontumor_lip2_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "NT" & Mouse_Genotype == "fl/fl") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("TGL2")) %>% 
+  summarise_all(.funs = mean)
+
+write.csv(nontumor_lip2_mean, "results/nontumor_lip2_means.csv")
+write.csv(tumor_lip2_mean, "results/tumor_lip2_means.csv")
+```
+#### farE
+```{r}
+tumor_farE_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "T" & Mouse_Genotype == "tg/tg") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("K06994")) %>% 
+  summarise_all(.funs = mean)
+
+nontumor_farE_mean <- ko_spatial %>%
+  t() %>% 
+  merge(av_spatial_meta, by=0) %>% 
+  filter(Mouse_Phenotype == "NT" & Mouse_Genotype == "fl/fl") %>%
+  group_by(Tissue_Number) %>% 
+  select(contains("K06994")) %>% 
+  summarise_all(.funs = mean)
+
+write.csv(nontumor_farE_mean, "results/nontumor_farE_means.csv")
+write.csv(tumor_farE_mean, "results/tumor_farE_means.csv")
+```
+
+## Ratio encoding/not encoding 
+
+
+```{r}
+load("../data/spatial/PICRUSt2/cn_spatial_picrust.RData")
+# create presence absence 
+ko_spatial_cn[ko_spatial_cn > 1] <- 1
+```
+
+
+consider re-writing and wrapping some of this code into a function 
+#### ohyA
+
+```{r}
+ohya_db <- get_gene_presence(ko_spatial_cn, av_spatial_asvtab_abs, func="K10254")
+write.csv(ohya_db,"results/ohya_db.csv")
+```
+
+make sure input is either absolute or normalised relative data (or both) then 
+add phenotype / tissue label with case_when
+```{r}
+ohyA_encoding_stats <- gene_stats(ohya_db, gene="K10254") %>% 
+  mutate(Phenotype = case_when(name %in% rownames(av_spatial_meta %>%  filter(Tissue == "T")) ~ "T",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "NT")) ~ "NT",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "TA")) ~ "TA",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "Control")) ~ "CTRL"))
+```
+
+```{r}
+formula <- xyform("value", "Phenotype")
+comparisons_list <- list(c("NT", "TA"), c("NT", "T"), c("TA", "T"), 
+                         c("CTRL", "NT"), c("CTRL", "TA"), c("CTRL", "T"))
+pvals <- ohyA_encoding_stats %>%
+  filter(variable == "ratio") %>% 
+        pairwise_wilcox_test(
+          formula,
+          comparisons = comparisons_list,
+          p.adjust.method = "BH",
+          paired = F
+        ) %>%
+        add_significance() %>%
+        add_xy_position(x = "Phenotype", step.increase = c(0.12)) %>%
+        filter(p.adj < 0.05)
+```
+
+
+```{r}
+base <- ggbarplot(filter(ohyA_encoding_stats, variable== "ratio"), x = "Phenotype", y = "value", color="black", fill = "Phenotype",
+ add = c("mean_sd"), palette = c("#9D9D9C","#EB5757", "#F94040", "#FF1D25"),add.params = list(size=1, width=0.25),
+order = c("CTRL", "NT", "TA", "T"), xlab = NULL, ylab="Ratio of ohyA+/ohyA-") +
+  geom_point(size=3.5, position = position_jitter(width = 0.1, height = 0.1)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 1.05), breaks = seq(0,1, 0.2)) + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "None") + theme_prism() +
+  theme(
+    legend.position = "None",
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 16),
+    axis.title = element_text(size = 18)
+  ) +
+  add_pvalue(pvals, label.size = 8,bracket.size = 1.1, bracket.nudge.y = -0.1)
+base
+ggsave(
+  "figures/ohyA_ratio.pdf",
+  device = "pdf",
+  dpi = 300,
+  height = 4.5,
+  width = 3.5
+)
+```
+
+#### lip2
+
+```{r}
+lip2_db <- get_gene_presence(ko_spatial_cn, av_spatial_asvtab_abs, func="K01046")
+write.csv(lip2_db,"results/lip2_db.csv")
+```
+
+make sure input is either absolute or normalised relative data (or both) then 
+add phenotype / tissue label with case_when
+```{r}
+lip2_encoding_stats <- gene_stats(lip2_db, gene="K01046") %>% 
+  mutate(Phenotype = case_when(name %in% rownames(av_spatial_meta %>%  filter(Tissue == "T")) ~ "T",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "NT")) ~ "NT",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "TA")) ~ "TA",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "Control")) ~ "CTRL"))
+```
+
+```{r}
+pvals <- lip2_encoding_stats %>%
+  filter(variable == "ratio") %>% 
+        pairwise_wilcox_test(
+          formula,
+          comparisons = comparisons_list,
+          p.adjust.method = "BH",
+          paired = F
+        ) %>%
+        add_significance() %>%
+        add_xy_position(x = "Phenotype", step.increase = c(0.12)) %>%
+        filter(p.adj < 0.05)
+```
+
+
+```{r}
+base <- ggbarplot(filter(lip2_encoding_stats, variable== "ratio"), x = "Phenotype", y = "value", color="black", fill = "Phenotype",
+ add = c("mean_sd"), palette = c("#9D9D9C","#EB5757", "#F94040", "#FF1D25"),add.params = list(size=1, width=0.25),
+order = c("CTRL", "NT", "TA", "T"), xlab = NULL, ylab="Ratio of lip2+/lip2-") +
+  geom_point(size=3.5, position = position_jitter(width = 0.1, height = 0.1)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 0.6), breaks = seq(0,0.6, 0.1)) + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "None") + theme_prism() +
+  theme(
+    legend.position = "None",
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 16),
+    axis.title = element_text(size = 18)
+  ) +
+  add_pvalue(pvals, label.size = 8,bracket.size = 1.1)
+base
+ggsave(
+  "figures/lip2_ratio.pdf",
+  device = "pdf",
+  dpi = 300,
+  height = 4.5,
+  width = 3.5
+)
+```
+
+#### farE
+
+```{r}
+farE_db <- get_gene_presence(ko_spatial_cn, av_spatial_asvtab_abs, func="K06994")
+write.csv(ohya_db,"results/farE_db.csv")
+```
+
+make sure input is either absolute or normalised relative data (or both) then 
+add phenotype / tissue label with case_when
+```{r}
+farE_encoding_stats <- gene_stats(farE_db, gene="K06994") %>% 
+  mutate(Phenotype = case_when(name %in% rownames(av_spatial_meta %>%  filter(Tissue == "T")) ~ "T",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "NT")) ~ "NT",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "TA")) ~ "TA",
+                               name %in% rownames(av_spatial_meta %>%  filter(Tissue == "Control")) ~ "CTRL"))
+```
+
+```{r}
+formula <- xyform("value", "Phenotype")
+comparisons_list <- list(c("NT", "TA"), c("NT", "T"), c("TA", "T"), 
+                         c("CTRL", "NT"), c("CTRL", "TA"), c("CTRL", "T"))
+pvals <- farE_encoding_stats %>%
+  filter(variable == "ratio") %>% 
+        pairwise_wilcox_test(
+          formula,
+          comparisons = comparisons_list,
+          p.adjust.method = "BH",
+          paired = F
+        ) %>%
+        add_significance() %>%
+        add_xy_position(x = "Phenotype", step.increase = c(0.08)) %>%
+        filter(p.adj < 0.05)
+```
+
+
+```{r}
+base <- ggbarplot(filter(farE_encoding_stats, variable== "ratio"), x = "Phenotype", y = "value", color="black", fill = "Phenotype",
+ add = c("mean_sd"), palette = c("#9D9D9C","#EB5757", "#F94040", "#FF1D25"),add.params = list(size=1, width=0.25),
+order = c("CTRL", "NT", "TA", "T"), xlab = NULL, ylab="Ratio of farE+/farE-") +
+  geom_point(size=3.5, position = position_jitter(width = 0.1, height = 0.1)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 0.4), breaks = seq(0,0.4, 0.1)) + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "None") + theme_prism() +
+  theme(
+    legend.position = "None",
+    axis.title.x = element_blank(),
+    axis.text = element_text(size = 16),
+    axis.title = element_text(size = 18)
+  ) +
+  add_pvalue(pvals, label.size = 8,bracket.size = 1.1, bracket.nudge.y = -0.02)
+base
+ggsave(
+  "figures/farE_ratio.pdf",
+  device = "pdf",
+  dpi = 300,
+  height = 4.5,
+  width = 3.5
+)
+```
+## Taxonomic contributions 
+
+```{r}
+load("../data/spatial/PICRUSt2/KO_contrib_goi.RData")
+tumor_samps <- av_spatial_meta %>% filter(Mouse_Phenotype =="T") %>% 
+  filter(Tissue_Number <= 10) %>%
+  rownames()
+```
+
+```{r}
+ohyA_contrib <- taxonomic_contributions_site(ko_spatial_contrib_filt, av_spatial_meta,
+                                samples = tumor_samps, func = "K10254", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+
+lip2_contrib <- taxonomic_contributions_site(ko_spatial_contrib_filt, av_spatial_meta,
+                                samples = tumor_samps, func = "K01046", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+
+farE_contrib <- taxonomic_contributions_site(ko_spatial_contrib_filt, av_spatial_meta,
+                                samples = tumor_samps, func = "K06994", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+```
+```{r}
+pal_named <- c("Clostridium IV" = "#4DBBD5FF","Clostridium XlVa" = "#E64B35FF",
+               "Erysipelotrichaceae_incertae_sedis" = "#00A087FF", 
+               "Flavonifractor"= "#3C5488FF", "Lactobacillus" = "#F39B7FFF", 
+               "Others" =  "lightgrey", "Pseudomonas" = "#8491B4FF", 
+               "Roseburia" = "#91D1C2FF", "unknown_Erysipelotrichaceae" ="#DC0000FF",
+               "unknown_Lachnospiraceae" = "#7E6148FF", "unknown_Ruminococcaceae" = "#B09C85FF")
+```
+
+```{r}
+ggplot(ohyA_contrib, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ site) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_ohyA_contrib.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+```{r}
+ohyA_contrib %>% 
+ggplot(aes(x=site,y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat = "identity") + 
+  coord_flip() + 
+  labs(x="Site", y="Contribtion [%]") + 
+  theme_classic() + 
+  theme(legend.title = element_blank(),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14),
+        legend.text = element_text(size=14)) +
+  scale_y_continuous(expand=c(0,0)) + 
+  scale_fill_manual(values=pal_named) + 
+  scale_x_reverse(expand = c(0,0), limits = c(11,0), breaks = seq(10, 1, by = -1))
+ggsave("figures/bar_ohyA_contrib.pdf", device = "pdf", dpi=300, height = 6, width = 15)
+```
+
+
+```{r}
+ggplot(lip2_contrib, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ site) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_lip2_contrib.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+```{r}
+lip2_contrib %>% 
+ggplot(aes(x=site,y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat = "identity") + 
+  coord_flip() + 
+  labs(x="Site", y="Contribtion [%]") + 
+  theme_classic() + 
+  theme(legend.title = element_blank(),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14),
+        legend.text = element_text(size=14)) +
+  scale_y_continuous(expand=c(0,0)) + 
+  scale_fill_manual(values=pal_named) + 
+  scale_x_reverse(expand = c(0,0), limits = c(11,0), breaks = seq(10, 1, by = -1))
+ggsave("figures/bar_lip2_contrib.pdf", device = "pdf", dpi=300, height = 6, width = 15)
+```
+
+
+```{r}
+ggplot(farE_contrib, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ site) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_farE_contrib.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+```{r}
+farE_contrib %>% 
+ggplot(aes(x=site,y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat = "identity") + 
+  coord_flip() + 
+  labs(x="Site", y="Contribtion [%]") + 
+  theme_classic() + 
+  theme(legend.title = element_blank(),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14),
+        legend.text = element_text(size=14)) +
+  scale_y_continuous(expand=c(0,0)) + 
+  scale_fill_manual(values=pal_named) + 
+  scale_x_reverse(expand = c(0,0), limits = c(11,0), breaks = seq(10, 1, by = -1))
+ggsave("figures/bar_farE_contrib.pdf", device = "pdf", dpi=300, height = 6, width = 15)
+```
+### Grouped contributions 
+
+Contributions from tumour susceptible sites are grouped here by tisse, into NT, 
+TA and T. 
+
+```{r}
+nt_samples <- av_spatial_meta %>% filter(Tissue_Number <= 10) %>% filter(Tissue == "NT") %>% rownames()
+ta_samples <- av_spatial_meta %>% filter(Tissue_Number <= 10) %>% filter(Tissue == "TA") %>% rownames()
+t_samples <- av_spatial_meta %>% filter(Tissue_Number <= 10) %>% filter(Tissue == "T") %>% rownames()
+# add metadata
+ko_spatial_contrib_filt_meta <- ko_spatial_contrib_filt %>% 
+  mutate(Tissue = case_when(sample %in% nt_samples ~ "NT",
+                            sample %in% ta_samples ~ "TA",
+                            sample %in% t_samples ~ "T",
+                            TRUE ~ "other"))
+```
+
+
+```{r}
+ohyA_contrib_tissue <- taxonomic_contributions_var(ko_spatial_contrib_filt_meta,
+                                samples = tumor_samps, var = "Tissue", func = "K10254", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+
+lip2_contrib_tissue <- taxonomic_contributions_var(ko_spatial_contrib_filt_meta,
+                                samples = tumor_samps, var = "Tissue", func = "K01046", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+
+farE_contrib_tissue <- taxonomic_contributions_var(ko_spatial_contrib_filt_meta,
+                                samples = tumor_samps, var = "Tissue", func = "K06994", taxonomy = av_spatial_asvtab_rel["taxonomy"], taxonomic_level = "Genus", n_taxa = 5)
+```
+ohyA 
+```{r}
+ggplot(ohyA_contrib_tissue, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ Tissue) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_ohyA_contrib_tissue.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+
+lip2 
+```{r}
+ggplot(lip2_contrib_tissue, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ Tissue) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_lip2_contrib_tissue.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+farE 
+```{r}
+ggplot(farE_contrib_tissue, aes(x="", y=Mean_Rel_Abund_Tax, fill=Genus)) +
+  geom_bar(stat="identity", width=5, color='black',size=0.2) +
+  coord_polar("y", start=0) + 
+  facet_grid(~ Tissue) + 
+  theme_void() + 
+  theme(legend.position = "top") +
+  scale_fill_manual(values=pal_named)
+ggsave("figures/piechart_farE_contrib_tissue.pdf", device = "pdf", dpi=300, height = 4, width = 12)
+```
+## FASN inhibitor experiment 
+
+### Alpha-diversity 
+
+
+```{r}
+load("../data/FASN_inhibitor_16S/16S/av_fasn16Srel.RData")
+load("../data/FASN_inhibitor_16S/16S/av_fasn16Srel_tgtg.RData")
+```
+
+```{r}
+alpha_fasn_all <- read_tsv("../analysis/Rhea/All/2.Alpha-Diversity/alpha-diversity.tab") %>% 
+  column_to_rownames("...1") %>% 
+  merge(av_fasn_meta, by=0)
+
+alpha_fasn_tgtg <- read_tsv("../analysis/Rhea/tgtg_only/2.Alpha-Diversity/alpha-diversity.tab") %>% 
+  column_to_rownames("...1") %>% 
+  merge(av_fasn_meta_tgtg, by=0)
+```
+```{r}
+alpha_metrics <- c("Richness", "Shannon.Effective")
+```
+
+Plots 
+```{r}
+comps <- microbiomeutilities::make_pairs(alpha_fasn_all$Genotype_Treatment)
+
+for (i in alpha_metrics) {
+  p <-
+    plot_boxplot(
+      alpha_fasn_all,
+      variable_col = "Genotype_Treatment",
+      value_col = i,
+      comparisons_list = comps,
+      fill_var = "Genotype",
+      multiple_groups = T,
+      group.order = c(
+        "fl/fl_RPMI",
+        "fl/fl_C75",
+        "tg/tg_Chow",
+        "tg/tg_RPMI",
+        "tg/tg_C75"
+      )
+    )
+  print(p)
+  ggsave(paste0("figures/",i, "_avfasn.pdf"), plot = p, device = "pdf", height = 5, width = 5.5)
+}
+
+```
+```{r}
+comps_tgtg <- microbiomeutilities::make_pairs(alpha_fasn_tgtg$Genotype_Treatment)
+for (i in alpha_metrics) {
+  p <-
+    plot_boxplot(
+      alpha_fasn_tgtg,
+      variable_col = "Genotype_Treatment",
+      value_col = i,
+      comparisons_list = comps_tgtg,
+      multiple_groups = T,
+      group.order = c("tg/tg_Chow", "tg/tg_RPMI", "tg/tg_C75")
+    )
+  print(p)
+  ggsave(paste0("figures/",i, "_avfasn_tgtg.pdf"), plot = p, device = "pdf", height = 5, width = 5)
+}
+
+```
+### Differential abundance 
+
+```{r}
+lefse_da <- read_tsv("LEfSe/lefse_c75-rpmi.res")
+```
+Several ASVs classified as Lacto and Odoribacter are depleted in C75. Lets examine
+genus level changes for these two and Mucispirillum 
+
+```{r}
+ps <- import_as_pseq(asvtab = "../data/FASN_inhibitor_16S/16S/av_fasn_tgtg_asvtab.tab", mapping = "../data/FASN_inhibitor_16S/16S/av_fasn_tgtg_metadata.tab") %>% 
+  transform("compositional")
+plot_data <- ps %>% 
+  subset_samples(Treatment != "Chow") %>% 
+  aggregate_taxa("Genus") %>% 
+  psmelt()
+```
+
+```{r}
+genera <- c("Mucispirillum", "Odoribacter", "Lactobacillus")
+plot_data <- plot_data %>% 
+  filter(OTU %in% genera) %>% 
+  mutate(Abundance = Abundance * 100)
+```
+
+```{r}
+col_pal <- c()
+for (i in genera){
+  p <- plot_boxplot(filter(plot_data, OTU == i), variable_col = "Treatment", value_col = "Abundance", comparisons_list = list(c("RPMI", "C75")), fill_var = "Treatment", group.order = c("RPMI", "C75"), cols = c("#33673B", "#FFBD00")) +
+    ylab(paste0(i, "\nRelative Abundance [%]"))
+  if (i == "Lactobacillus"){
+    p <- p + ylim(0, 15)
+  }
+  print(p)
+  ggsave(paste0("figures/", i, "RPMI-C75.pdf"), device = "pdf", dpi=300, width = 4.5, height = 4)
+}
+```
+
+
+# Metabolome 
+
+## Libraries 
+
+```{r}
+
+```
+
+
+## Load metabolome data
+
+```{r}
+
+```
+
+```{r}
+post_tumor_cc <- metadata %>% 
+  filter(Age != "5wk" & Genotype != "tg/wt" & Sample_Type == "caecal")
+post_tumor_cc_samples <- post_tumor_cc %>%
+  rownames()
+  
+  
+post_tumor_fc <- metadata %>% 
+  filter(Age != "5wk" & Genotype != "tg/wt" & Sample_Type == "faecal")
+post_tumor_fc_samples <- post_tumor_fc %>% 
+  rownames()
+```
+
+```{r}
+# filter to post tumor 
+merged_pt_cc <- as.data.frame(cc.log.normed) %>% 
+  dplyr::select(all_of(post_tumor_cc_samples))
+merged_pt_fc <- as.data.frame(fc.log.normed) %>% 
+  dplyr::select(all_of(post_tumor_fc_samples)) 
+```
+
+
+```{r}
+int_metabolites <- c("10-hydroxystearic acid", "C20 hydroxy fatty acid", "FA 18:1")
+int_metabolite_ids <- metabolite.info %>% 
+  filter(`Metabolite name` %in% int_metabolites) %>% 
+  rownames()
+
+merged_pt_cc_int <- merged_pt_cc %>% 
+  filter_rownames(int_metabolite_ids) %>% 
+  rownames_to_column("featureID") %>% 
+  pivot_longer(-featureID)
+merged_pt_fc_int <- merged_pt_fc %>% 
+  filter_rownames(int_metabolite_ids) %>% 
+  rownames_to_column("featureID") %>% 
+  pivot_longer(-featureID)
+```
+
+```{r}
+# Get T and NT samples 
+NT_cc_samples <- filter(post_tumor_cc, Phenotype == "NT") %>% rownames()
+NT_fc_samples <- filter(post_tumor_fc, Phenotype == "NT") %>% rownames()
+```
+
+```{r}
+# Add metadata 
+merged_pt_cc_int$Phenotype <- ifelse(merged_pt_cc_int$name %in% NT_cc_samples, "NT", "T")
+merged_pt_fc_int$Phenotype <- ifelse(merged_pt_fc_int$name %in% NT_fc_samples, "NT", "T")
+```
+
+### Caecal - AV
+
+```{r}
+AV_samples_cc <- filter(post_tumor_cc, Mouse_Line == "AV") %>% rownames()
+AVI_samples_cc <- filter(post_tumor_cc, Mouse_Line == "AVI") %>% rownames()
+
+merged_pt_cc_int_av <- merged_pt_cc_int %>% 
+  filter(name %in% AV_samples_cc)
+merged_pt_cc_int_avi <-merged_pt_cc_int %>% 
+  filter(name %in% AVI_samples_cc)
+
+AV_samples_fc <- filter(post_tumor_fc, Mouse_Line == "AV") %>% rownames()
+AVI_samples_fc <- filter(post_tumor_fc, Mouse_Line == "AVI") %>% rownames()
+
+
+merged_pt_fc_int_av <-  merged_pt_fc_int %>% 
+  filter(name %in% AV_samples_fc)
+merged_pt_fc_int_avi <-  merged_pt_fc_int %>% 
+  filter(name %in% AVI_samples_fc)
+```
+
+## Metabolite plots 
+```{r}
+my_comparisons <- list(c("NT", "T"))
+
+pc1 <- ggboxplot(data = filter(merged_pt_cc_int_avi, featureID == "neg_361"),
+          x="Phenotype", y="value", fill = "Phenotype", ylab = "LogInt", order = c("NT", "T"), 
+          add = "jitter", alpha=0.75, color = "Phenotype", outlier.shape = NA) + 
+  stat_compare_means(label = "p.signif", comparisons = my_comparisons) + 
+  geom_boxplot(aes(fill=Phenotype), color="black") + 
+   stat_boxplot(geom = "errorbar",
+    width = 0.05, size=0.5) + 
+  scale_fill_manual(values=color_pal) + 
+  scale_color_manual(values=color_pal) + 
+  ggtitle("10-hydroxystearic acid") + 
+  theme(legend.position = "None", plot.title = element_text(hjust = 0.5))
+ggsave("caecal_10-hydroxystearic_acid_avi.pdf", pc1, device = "pdf", height = 4, width = 5)
+```
+
